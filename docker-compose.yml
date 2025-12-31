@@ -1,0 +1,153 @@
+version: '3.8'
+
+services:
+  # HashiCorp Vault - Secrets Management (Optional)
+  vault:
+    image: hashicorp/vault:latest
+    container_name: vanish-vault
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: "dev-root-token"
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    command: server -dev
+    networks:
+      - vanish-network
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  # PostgreSQL - User accounts and metadata storage
+  postgres:
+    image: postgres:15-alpine
+    container_name: vanish-postgres
+    environment:
+      POSTGRES_USER: vanish
+      POSTGRES_PASSWORD: vanish
+      POSTGRES_DB: vanish
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - vanish-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vanish"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # Redis - In-memory ephemeral message storage (no persistence)
+  redis:
+    image: redis:7-alpine
+    container_name: vanish-redis
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy volatile-ttl
+      --save ""
+      --appendonly no
+    ports:
+      - "6379:6379"
+    networks:
+      - vanish-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  # Backend - Go API server
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vanish-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_PORT=8080
+      - SERVER_HOST=0.0.0.0
+      - REDIS_ADDRESS=redis:6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=vanish
+      - DB_PASSWORD=vanish
+      - DB_NAME=vanish
+      - DB_SSLMODE=disable
+      - JWT_SECRET=change-me-in-production
+      - JWT_DURATION=24
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+      - DEFAULT_TTL=86400
+      - MAX_TTL=604800
+      - MIN_TTL=3600
+      # Vault (optional - set VAULT_ENABLED=true to use)
+      - VAULT_ENABLED=false
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=dev-root-token
+      # Okta (optional - configure in Okta dashboard first)
+      - OKTA_ENABLED=false
+      - OKTA_DOMAIN=
+      - OKTA_CLIENT_ID=
+      - OKTA_CLIENT_SECRET=
+      - OKTA_REDIRECT_URL=
+      # Slack (optional - create Slack app first)
+      - SLACK_ENABLED=false
+      - SLACK_BOT_TOKEN=
+      - SLACK_SIGNING_SECRET=
+      # Email (optional - configure SMTP)
+      - EMAIL_ENABLED=false
+      - SMTP_HOST=
+      - SMTP_PORT=587
+      - SMTP_USER=
+      - SMTP_PASSWORD=
+      - EMAIL_FROM_ADDRESS=noreply@vanish.local
+      - EMAIL_FROM_NAME=Vanish
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - vanish-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # Frontend - React SPA with nginx
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vanish-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - vanish-network
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+
+networks:
+  vanish-network:
+    driver: bridge

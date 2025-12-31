@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  # Redis for development
+  redis:
+    image: redis:7-alpine
+    container_name: vanish-redis-dev
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy volatile-ttl
+      --save ""
+      --appendonly no
+    ports:
+      - "6379:6379"
+    networks:
+      - vanish-network
+
+networks:
+  vanish-network:
+    driver: bridge
