@@ -4,7 +4,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/milkiss/vanish/backend/internal/auth"
 	"github.com/milkiss/vanish/backend/internal/config"
+	"github.com/milkiss/vanish/backend/internal/integrations/email"
 	"github.com/milkiss/vanish/backend/internal/integrations/okta"
+	"github.com/milkiss/vanish/backend/internal/integrations/slack"
 	"github.com/milkiss/vanish/backend/internal/repository"
 	"github.com/milkiss/vanish/backend/internal/storage"
 )
@@ -17,6 +19,8 @@ func SetupRouter(
 	metadataRepo *repository.MetadataRepository,
 	jwtManager *auth.JWTManager,
 	oktaClient interface{}, // *okta.Client or nil if Okta disabled
+	slackClient *slack.Client, // *slack.Client or nil if Slack disabled
+	emailClient *email.Client, // *email.Client or nil if Email disabled
 ) *gin.Engine {
 	// Create router with no default logging (security requirement)
 	router := SetupGinWithNoLogging()
@@ -31,6 +35,7 @@ func SetupRouter(
 	historyHandler := NewHistoryHandler(metadataRepo)
 	adminHandler := NewAdminHandler(userRepo, metadataRepo)
 	profileHandler := NewProfileHandler(userRepo)
+	notificationHandler := NewNotificationHandler(userRepo, metadataRepo, emailClient, slackClient)
 
 	// Health check endpoint (public)
 	router.GET("/health", messageHandler.Health)
@@ -73,6 +78,13 @@ func SetupRouter(
 				messages.HEAD("/:id", messageHandler.CheckMessage)
 			}
 
+			// Notification endpoints
+			notifications := protected.Group("/notifications")
+			{
+				notifications.POST("/send-slack", notificationHandler.SendSlackNotification)
+				notifications.POST("/send-email", notificationHandler.SendEmailNotification)
+			}
+
 			// History endpoints
 			protected.GET("/history", historyHandler.GetMyHistory)
 
@@ -97,6 +109,24 @@ func SetupRouter(
 				// System management
 				admin.GET("/statistics", adminHandler.GetStatistics)
 				admin.POST("/cleanup", adminHandler.CleanupExpired)
+			}
+		}
+
+		// Slack integration endpoints (public, authenticated by Slack signature)
+		if cfg.Slack.Enabled && slackClient != nil {
+			slackHandler := NewSlackHandler(
+				slackClient,
+				store,
+				metadataRepo,
+				userRepo,
+				cfg.Slack.SigningSecret,
+				cfg.Server.BaseURL,
+			)
+
+			slack := api.Group("/slack")
+			{
+				slack.POST("/command", slackHandler.HandleSlashCommand)
+				slack.POST("/interaction", slackHandler.HandleInteraction)
 			}
 		}
 	}

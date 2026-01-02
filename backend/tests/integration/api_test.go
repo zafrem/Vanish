@@ -31,7 +31,7 @@ func setupTestRouter(t *testing.T) (*httptest.Server, func()) {
 	require.NoError(t, err)
 
 	// Create mock repositories (nil for integration tests as we're testing public endpoints)
-	router := api.SetupRouter(cfg, store, nil, nil, nil, nil)
+	router := api.SetupRouter(cfg, store, nil, nil, nil, nil, nil, nil)
 	server := httptest.NewServer(router)
 
 	cleanup := func() {

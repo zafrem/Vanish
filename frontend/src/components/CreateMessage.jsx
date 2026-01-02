@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { generateKey, exportKey, encrypt } from '../lib/crypto';
-import { createMessage, getUsers } from '../lib/api';
+import { createMessage, getUsers, sendSlackNotification, sendEmailNotification } from '../lib/api';
 import { generateShareableURL } from '../utils/urlHelpers';
 import { copyToClipboard } from '../lib/clipboard';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,8 @@ export default function CreateMessage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [notificationStatus, setNotificationStatus] = useState(null); // 'slack_sent', 'email_sent', 'error'
+  const [isSendingNotification, setIsSendingNotification] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -109,8 +111,6 @@ export default function CreateMessage() {
 
       // Clear the input
       setSecretText('');
-      setRecipientId('');
-      setSelectedUser(null);
       setSearchTerm('');
     } catch (err) {
       setError(err.message);
@@ -131,10 +131,41 @@ export default function CreateMessage() {
     }
   };
 
+  const handleSendSlack = async () => {
+    setIsSendingNotification(true);
+    setNotificationStatus(null);
+    try {
+      await sendSlackNotification(parseInt(recipientId), shareableURL);
+      setNotificationStatus('slack_sent');
+    } catch (err) {
+      setError('Failed to send Slack notification: ' + err.message);
+      setNotificationStatus('error');
+    } finally {
+      setIsSendingNotification(false);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    setIsSendingNotification(true);
+    setNotificationStatus(null);
+    try {
+      await sendEmailNotification(parseInt(recipientId), shareableURL);
+      setNotificationStatus('email_sent');
+    } catch (err) {
+      setError('Failed to send Email notification: ' + err.message);
+      setNotificationStatus('error');
+    } finally {
+      setIsSendingNotification(false);
+    }
+  };
+
   const handleReset = () => {
     setShareableURL(null);
     setError(null);
     setCopied(false);
+    setRecipientId('');
+    setSelectedUser(null);
+    setNotificationStatus(null);
   };
 
   if (shareableURL) {
@@ -151,10 +182,45 @@ export default function CreateMessage() {
             {shareableURL}
           </div>
 
+          {error && (
+            <div className="bg-red-900/30 border border-red-500 text-red-300 px-4 py-3 rounded-lg text-sm mb-4">
+              {error}
+            </div>
+          )}
+
+          {notificationStatus === 'slack_sent' && (
+            <div className="bg-green-900/30 border border-green-500 text-green-300 px-4 py-3 rounded-lg text-sm mb-4 flex items-center justify-center">
+              <span className="mr-2">✓</span> Notification sent via Slack!
+            </div>
+          )}
+
+          {notificationStatus === 'email_sent' && (
+            <div className="bg-green-900/30 border border-green-500 text-green-300 px-4 py-3 rounded-lg text-sm mb-4 flex items-center justify-center">
+              <span className="mr-2">✓</span> Notification sent via Email!
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3 mb-3">
+             <button
+              onClick={handleSendSlack}
+              disabled={isSendingNotification || notificationStatus === 'slack_sent'}
+              className="bg-[#4A154B] hover:bg-[#611f69] text-white font-semibold py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSendingNotification ? 'Sending...' : 'Send via Slack'}
+            </button>
+            <button
+              onClick={handleSendEmail}
+              disabled={isSendingNotification || notificationStatus === 'email_sent'}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSendingNotification ? 'Sending...' : 'Send via Email'}
+            </button>
+          </div>
+
           <div className="space-y-3">
             <button
               onClick={handleCopyURL}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200"
+              className="w-full bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-200"
             >
               {copied ? '✓ Copied!' : 'Copy Link'}
             </button>

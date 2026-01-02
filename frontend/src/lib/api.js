@@ -133,3 +133,47 @@ export async function checkHealth() {
   const response = await fetch('/health');
   return response.json();
 }
+
+/**
+ * Send a Slack notification to the recipient
+ * @param {number} recipientId
+ * @param {string} messageUrl
+ * @returns {Promise<void>}
+ */
+export async function sendSlackNotification(recipientId, messageUrl) {
+  const response = await fetch(`${API_BASE}/notifications/send-slack`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      recipient_id: recipientId,
+      message_url: messageUrl
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || 'Failed to send Slack notification');
+  }
+}
+
+/**
+ * Send an Email notification to the recipient
+ * @param {number} recipientId
+ * @param {string} messageUrl
+ * @returns {Promise<void>}
+ */
+export async function sendEmailNotification(recipientId, messageUrl) {
+  const response = await fetch(`${API_BASE}/notifications/send-email`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      recipient_id: recipientId,
+      message_url: messageUrl
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || 'Failed to send Email notification');
+  }
+}

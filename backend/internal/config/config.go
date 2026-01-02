@@ -24,6 +24,7 @@ type Config struct {
 type ServerConfig struct {
 	Port           string
 	Host           string
+	BaseURL        string
 	AllowedOrigins []string
 }
 
@@ -99,6 +100,7 @@ func Load() (*Config, error) {
 		Server: ServerConfig{
 			Port:           getEnv("SERVER_PORT", "8080"),
 			Host:           getEnv("SERVER_HOST", "0.0.0.0"),
+			BaseURL:        getEnv("BASE_URL", "http://localhost:5173"),
 			AllowedOrigins: getEnvAsSlice("ALLOWED_ORIGINS", []string{"http://localhost:5173", "http://localhost:3000"}),
 		},
 		Redis: RedisConfig{
