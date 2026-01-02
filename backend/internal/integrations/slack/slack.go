@@ -174,3 +174,142 @@ func (c *Client) postMessage(ctx context.Context, channelID, message string) err
 
 	return nil
 }
+
+// OpenModal opens a modal dialog in Slack
+func (c *Client) OpenModal(ctx context.Context, triggerID string, view map[string]interface{}) error {
+	url := "https://slack.com/api/views.open"
+
+	payload := map[string]interface{}{
+		"trigger_id": triggerID,
+		"view":       view,
+	}
+
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.config.BotToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		OK    bool   `json:"ok"`
+		Error string `json:"error"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return err
+	}
+
+	if !result.OK {
+		return fmt.Errorf("slack API error: %s", result.Error)
+	}
+
+	return nil
+}
+
+// UserInfo represents Slack user information
+type UserInfo struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+// GetUserInfo gets information about a Slack user by ID
+func (c *Client) GetUserInfo(ctx context.Context, userID string) (*UserInfo, error) {
+	url := "https://slack.com/api/users.info?user=" + userID
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.config.BotToken)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		OK    bool   `json:"ok"`
+		User  struct {
+			ID      string `json:"id"`
+			Name    string `json:"name"`
+			Profile struct {
+				Email string `json:"email"`
+			} `json:"profile"`
+		} `json:"user"`
+		Error string `json:"error"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	if !result.OK {
+		return nil, fmt.Errorf("slack API error: %s", result.Error)
+	}
+
+	return &UserInfo{
+		ID:    result.User.ID,
+		Name:  result.User.Name,
+		Email: result.User.Profile.Email,
+	}, nil
+}
+
+// SendEphemeralMessage sends an ephemeral message to a user
+// Ephemeral messages are only visible to the specified user
+func (c *Client) SendEphemeralMessage(ctx context.Context, userID, message string) error {
+	// Open a DM channel first
+	channelID, err := c.openDMChannel(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to open DM channel: %w", err)
+	}
+
+	url := "https://slack.com/api/chat.postEphemeral"
+
+	payload := map[string]interface{}{
+		"channel": channelID,
+		"user":    userID,
+		"text":    message,
+	}
+
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.config.BotToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		OK    bool   `json:"ok"`
+		Error string `json:"error"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return err
+	}
+
+	if !result.OK {
+		return fmt.Errorf("slack API error: %s", result.Error)
+	}
+
+	return nil
+}

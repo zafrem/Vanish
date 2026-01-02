@@ -13,7 +13,9 @@ import (
 	"github.com/milkiss/vanish/backend/internal/auth"
 	"github.com/milkiss/vanish/backend/internal/config"
 	"github.com/milkiss/vanish/backend/internal/database"
+	"github.com/milkiss/vanish/backend/internal/integrations/email"
 	"github.com/milkiss/vanish/backend/internal/integrations/okta"
+	"github.com/milkiss/vanish/backend/internal/integrations/slack"
 	"github.com/milkiss/vanish/backend/internal/repository"
 	"github.com/milkiss/vanish/backend/internal/storage"
 )
@@ -98,8 +100,33 @@ func main() {
 		}
 	}
 
+	// Initialize Slack client (if enabled)
+	var slackClient *slack.Client
+	if cfg.Slack.Enabled {
+		slackClient = slack.NewClient(&slack.Config{
+			BotToken:      cfg.Slack.BotToken,
+			WebhookURL:    cfg.Slack.WebhookURL,
+			SigningSecret: cfg.Slack.SigningSecret,
+		})
+		log.Println("Slack integration enabled")
+	}
+
+	// Initialize Email client (if enabled)
+	var emailClient *email.Client
+	if cfg.Email.Enabled {
+		emailClient = email.NewClient(&email.Config{
+			SMTPHost:     cfg.Email.SMTPHost,
+			SMTPPort:     cfg.Email.SMTPPort,
+			SMTPUser:     cfg.Email.SMTPUser,
+			SMTPPassword: cfg.Email.SMTPPassword,
+			FromAddress:  cfg.Email.FromAddress,
+			FromName:     cfg.Email.FromName,
+		})
+		log.Println("Email integration enabled")
+	}
+
 	// Setup router
-	router := api.SetupRouter(cfg, store, userRepo, metadataRepo, jwtManager, oktaClient)
+	router := api.SetupRouter(cfg, store, userRepo, metadataRepo, jwtManager, oktaClient, slackClient, emailClient)
 
 	// Create HTTP server
 	addr := cfg.Address()

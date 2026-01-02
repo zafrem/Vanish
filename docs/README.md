@@ -10,6 +10,7 @@ This directory contains comprehensive documentation for the Vanish ephemeral mes
 ### API & Integration
 - **[API Reference](API_REFERENCE.md)** - Complete REST API documentation with examples
 - **[Enterprise Setup](ENTERPRISE_SETUP.md)** - Okta SSO, Vault, Slack, and Email integration guide
+- **[Automation Use Cases](AUTOMATION_USE_CASES.md)** - Patterns for Cloud-Init, CI/CD, and Honeytokens
 
 ### Architecture & Design
 - **[Architecture](ARCHITECTURE.md)** - System design, security model, and data flow
