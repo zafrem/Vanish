@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+.github
+
+# Documentation
+README.md
+docs/
+images/
+
+# Logs
+logs/
+*.log
+
+# Backend
+backend/server
+backend/.env
+backend/coverage.out
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# Docker
+docker-compose.yml
+docker-compose.dev.yml
+Dockerfile
+backend/Dockerfile
+frontend/Dockerfile
+
+# Scripts
+start.sh
+stop.sh
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
