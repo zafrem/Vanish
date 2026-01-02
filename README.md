@@ -62,6 +62,18 @@ docker-compose up -d
 
 Once everything is running, you can access the application at **http://localhost:3000**.
 
+### Docker Image Management
+
+To build and push your own Docker images to a registry:
+
+```bash
+# Build the unified image (Backend + Frontend)
+docker build -t zafrem/vanish:tagname .
+
+# Push the image to Docker Hub
+docker push zafrem/vanish:tagname
+```
+
 ![Login Screen](images/login.jpg)
 
 **Service Endpoints:**
