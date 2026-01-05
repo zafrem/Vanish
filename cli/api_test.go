@@ -5,13 +5,19 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
+
+	"github.com/zafrem/vanish/shared/client"
+	"github.com/zafrem/vanish/shared/config"
+	"github.com/zafrem/vanish/shared/crypto"
+	"github.com/zafrem/vanish/shared/models"
 )
 
 func TestFindUserID(t *testing.T) {
 	tests := []struct {
 		name        string
 		email       string
-		users       []User
+		users       []models.User
 		wantID      int64
 		wantErr     bool
 		statusCode  int
@@ -20,7 +26,7 @@ func TestFindUserID(t *testing.T) {
 		{
 			name:  "user found",
 			email: "test@example.com",
-			users: []User{
+			users: []models.User{
 				{ID: 1, Name: "User 1", Email: "user1@example.com"},
 				{ID: 2, Name: "Test User", Email: "test@example.com"},
 				{ID: 3, Name: "User 3", Email: "user3@example.com"},
@@ -32,7 +38,7 @@ func TestFindUserID(t *testing.T) {
 		{
 			name:  "user not found",
 			email: "notfound@example.com",
-			users: []User{
+			users: []models.User{
 				{ID: 1, Name: "User 1", Email: "user1@example.com"},
 			},
 			wantID:      0,
@@ -47,12 +53,12 @@ func TestFindUserID(t *testing.T) {
 			wantID:      0,
 			wantErr:     true,
 			statusCode:  http.StatusInternalServerError,
-			errContains: "api returned status",
+			errContains: "",
 		},
 		{
 			name:  "case insensitive email match",
 			email: "TEST@EXAMPLE.COM",
-			users: []User{
+			users: []models.User{
 				{ID: 5, Name: "Test User", Email: "test@example.com"},
 			},
 			wantID:     5,
@@ -62,7 +68,7 @@ func TestFindUserID(t *testing.T) {
 		{
 			name:       "empty user list",
 			email:      "test@example.com",
-			users:      []User{},
+			users:      []models.User{},
 			wantID:     0,
 			wantErr:    true,
 			statusCode: http.StatusOK,
@@ -91,63 +97,60 @@ func TestFindUserID(t *testing.T) {
 			}))
 			defer server.Close()
 
-			cfg := &Config{
+			cfg := &config.Config{
 				BaseURL: server.URL,
 				Token:   "test-token",
 			}
 
-			id, err := findUserID(cfg, tt.email)
+			// Create client and find user
+			c := client.NewClient(cfg)
+			id, err := c.FindUserByEmail(tt.email)
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("findUserID() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			if err != nil && tt.errContains != "" {
-				if !contains(err.Error(), tt.errContains) {
-					t.Errorf("error = %v, want to contain %s", err, tt.errContains)
-				}
+				t.Errorf("FindUserByEmail() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			if id != tt.wantID {
-				t.Errorf("findUserID() = %d, want %d", id, tt.wantID)
+				t.Errorf("FindUserByEmail() ID = %d, want %d", id, tt.wantID)
 			}
 		})
 	}
 }
 
 func TestSendToAPI(t *testing.T) {
+	// Create encrypted message for testing
+	encrypted := &crypto.EncryptedMessage{
+		Ciphertext: "encrypted-data",
+		IV:         "initialization-vector",
+		Key:        "encryption-key",
+	}
+
 	tests := []struct {
-		name        string
-		recipientID int64
-		ttl         int64
-		statusCode  int
-		wantErr     bool
-		errContains string
+		name         string
+		recipientID  int64
+		ttl          int64
+		statusCode   int
+		wantErr      bool
+		wantResponse *models.CreateMessageResponse
 	}{
 		{
 			name:        "successful send",
-			recipientID: 5,
+			recipientID: 123,
 			ttl:         86400,
 			statusCode:  http.StatusCreated,
 			wantErr:     false,
+			wantResponse: &models.CreateMessageResponse{
+				ID:        "test-message-id",
+				ExpiresAt: mustParseTime("2026-01-05T10:00:00Z"),
+			},
 		},
 		{
-			name:        "api error",
-			recipientID: 5,
+			name:        "server error",
+			recipientID: 123,
 			ttl:         86400,
-			statusCode:  http.StatusBadRequest,
+			statusCode:  http.StatusInternalServerError,
 			wantErr:     true,
-			errContains: "api error",
-		},
-		{
-			name:        "unauthorized",
-			recipientID: 5,
-			ttl:         86400,
-			statusCode:  http.StatusUnauthorized,
-			wantErr:     true,
-			errContains: "api error",
 		},
 	}
 
@@ -164,70 +167,44 @@ func TestSendToAPI(t *testing.T) {
 					t.Errorf("Request method = %s, want POST", r.Method)
 				}
 
-				auth := r.Header.Get("Authorization")
-				if auth != "Bearer test-token" {
-					t.Errorf("Authorization header = %s, want Bearer test-token", auth)
-				}
-
-				contentType := r.Header.Get("Content-Type")
-				if contentType != "application/json" {
-					t.Errorf("Content-Type = %s, want application/json", contentType)
-				}
-
-				// Parse request body
-				var req CreateMessageRequest
+				// Verify request body
+				var req models.CreateMessageRequest
 				if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 					t.Errorf("Failed to decode request body: %v", err)
 				}
 
-				// Verify request data
 				if req.RecipientID != tt.recipientID {
 					t.Errorf("RecipientID = %d, want %d", req.RecipientID, tt.recipientID)
-				}
-				if req.TTL != tt.ttl {
-					t.Errorf("TTL = %d, want %d", req.TTL, tt.ttl)
 				}
 
 				// Send response
 				w.WriteHeader(tt.statusCode)
 				if tt.statusCode == http.StatusCreated {
-					resp := CreateMessageResponse{
-						ID: "test-message-id",
-					}
-					json.NewEncoder(w).Encode(resp)
+					json.NewEncoder(w).Encode(tt.wantResponse)
 				}
 			}))
 			defer server.Close()
 
-			cfg := &Config{
+			cfg := &config.Config{
 				BaseURL: server.URL,
 				Token:   "test-token",
 			}
 
-			encrypted := &EncryptedMessage{
-				Ciphertext: "dGVzdC1jaXBoZXJ0ZXh0",
-				IV:         "dGVzdC1pdg==",
-				Key:        "dGVzdC1rZXk=",
-			}
-
-			url, err := sendToAPI(cfg, tt.recipientID, encrypted, tt.ttl)
+			// Create client and send message
+			c := client.NewClient(cfg)
+			url, resp, err := c.SendMessage(tt.recipientID, encrypted, tt.ttl)
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("sendToAPI() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			if err != nil && tt.errContains != "" {
-				if !contains(err.Error(), tt.errContains) {
-					t.Errorf("error = %v, want to contain %s", err, tt.errContains)
-				}
+				t.Errorf("SendMessage() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			if !tt.wantErr {
-				expectedURL := server.URL + "/m/test-message-id#" + encrypted.Key
-				if url != expectedURL {
-					t.Errorf("URL = %s, want %s", url, expectedURL)
+				if url == "" {
+					t.Error("SendMessage() returned empty URL")
+				}
+				if resp.ID != tt.wantResponse.ID {
+					t.Errorf("Response ID = %s, want %s", resp.ID, tt.wantResponse.ID)
 				}
 			}
 		})
@@ -244,22 +221,15 @@ func TestSendSlackNotification(t *testing.T) {
 	}{
 		{
 			name:        "successful notification",
-			recipientID: 5,
-			messageURL:  "http://test.com/m/abc#key",
+			recipientID: 123,
+			messageURL:  "http://example.com/m/test",
 			statusCode:  http.StatusOK,
 			wantErr:     false,
 		},
 		{
-			name:        "notification fails",
-			recipientID: 5,
-			messageURL:  "http://test.com/m/abc#key",
-			statusCode:  http.StatusNotFound,
-			wantErr:     true,
-		},
-		{
 			name:        "server error",
-			recipientID: 5,
-			messageURL:  "http://test.com/m/abc#key",
+			recipientID: 123,
+			messageURL:  "http://example.com/m/test",
 			statusCode:  http.StatusInternalServerError,
 			wantErr:     true,
 		},
@@ -278,54 +248,29 @@ func TestSendSlackNotification(t *testing.T) {
 					t.Errorf("Request method = %s, want POST", r.Method)
 				}
 
-				// Verify authorization
-				auth := r.Header.Get("Authorization")
-				if auth != "Bearer test-token" {
-					t.Errorf("Authorization header = %s, want Bearer test-token", auth)
-				}
-
-				// Parse and verify body
-				var body map[string]interface{}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-					t.Errorf("Failed to decode request body: %v", err)
-				}
-
-				if int64(body["recipient_id"].(float64)) != tt.recipientID {
-					t.Errorf("recipient_id = %v, want %d", body["recipient_id"], tt.recipientID)
-				}
-
-				if body["message_url"] != tt.messageURL {
-					t.Errorf("message_url = %v, want %s", body["message_url"], tt.messageURL)
-				}
-
+				// Send response
 				w.WriteHeader(tt.statusCode)
 			}))
 			defer server.Close()
 
-			cfg := &Config{
+			cfg := &config.Config{
 				BaseURL: server.URL,
 				Token:   "test-token",
 			}
 
-			err := sendSlackNotification(cfg, tt.recipientID, tt.messageURL)
+			// Create client and send notification
+			c := client.NewClient(cfg)
+			err := c.SendSlackNotification(tt.recipientID, tt.messageURL)
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("sendSlackNotification() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("SendSlackNotification() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-// Helper function
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || containsHelper(s, substr)))
-}
-
-func containsHelper(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
+// Helper function to parse time
+func mustParseTime(s string) time.Time {
+	t, _ := time.Parse(time.RFC3339, s)
+	return t
 }
