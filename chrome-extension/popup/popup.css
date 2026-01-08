@@ -1,0 +1,422 @@
+/**
+ * Vanish Chrome Extension - Popup Styles
+ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: #1e293b;
+  color: #e2e8f0;
+  width: 400px;
+  min-height: 300px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+#app {
+  padding: 16px;
+}
+
+/* Loading State */
+.loading {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 16px;
+  border: 4px solid #475569;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.empty-state .icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.empty-state h2 {
+  font-size: 20px;
+  margin-bottom: 8px;
+  color: #f1f5f9;
+}
+
+.empty-state p {
+  color: #94a3b8;
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #334155;
+}
+
+.header h2 {
+  font-size: 18px;
+  color: #f1f5f9;
+}
+
+/* Matches List */
+.matches-list {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+
+.match-item {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.match-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.match-keyword {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.match-context {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #cbd5e1;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.context-prefix,
+.context-suffix {
+  color: #64748b;
+}
+
+.context-match {
+  font-weight: 600;
+  color: #f1f5f9;
+  background: #334155;
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+
+/* Recipients */
+.recipients-container h2 {
+  font-size: 18px;
+  margin-bottom: 16px;
+  color: #f1f5f9;
+}
+
+.secret-preview {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.secret-preview label {
+  font-size: 12px;
+  color: #94a3b8;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.secret-text {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  color: #f1f5f9;
+  background: #1e293b;
+  padding: 8px;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+.recipient-list input[type="text"] {
+  width: 100%;
+  padding: 10px 12px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #f1f5f9;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.recipient-list input[type="text"]:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.recipient-list input[type="text"]::placeholder {
+  color: #64748b;
+}
+
+.users-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.user-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.user-item:hover {
+  background: #1e293b;
+}
+
+.user-info {
+  flex: 1;
+}
+
+.user-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #f1f5f9;
+  margin-bottom: 2px;
+}
+
+.user-email {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Success */
+.success-container {
+  text-align: center;
+  padding: 20px;
+}
+
+.success-container .icon.success {
+  font-size: 64px;
+  color: #22c55e;
+  margin-bottom: 16px;
+}
+
+.success-container h2 {
+  font-size: 20px;
+  margin-bottom: 8px;
+  color: #f1f5f9;
+}
+
+.success-container p {
+  color: #94a3b8;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.url-box {
+  margin-bottom: 20px;
+}
+
+.url-box input {
+  width: 100%;
+  padding: 12px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #f1f5f9;
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+  text-align: center;
+}
+
+.url-box input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.info-box {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 20px;
+}
+
+.info-box p {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.info-box p:last-child {
+  margin-bottom: 0;
+}
+
+/* Error */
+.error-container {
+  text-align: center;
+  padding: 20px;
+}
+
+.error-container .icon.error {
+  font-size: 64px;
+  color: #ef4444;
+  margin-bottom: 16px;
+}
+
+.error-container h2 {
+  font-size: 20px;
+  margin-bottom: 8px;
+  color: #f1f5f9;
+}
+
+.error-message {
+  color: #fca5a5;
+  background: #450a0a;
+  border: 1px solid #991b1b;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+
+/* Buttons */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: linear-gradient(to right, #ef4444, #f97316);
+  color: white;
+  padding: 10px 20px;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btn-primary.success {
+  background: #22c55e;
+}
+
+.btn-secondary {
+  background: #334155;
+  color: #f1f5f9;
+  padding: 10px 20px;
+}
+
+.btn-secondary:hover {
+  background: #475569;
+}
+
+.btn-link {
+  background: transparent;
+  color: #3b82f6;
+  padding: 10px 20px;
+  text-decoration: underline;
+}
+
+.btn-link:hover {
+  color: #60a5fa;
+}
+
+.btn-icon {
+  background: transparent;
+  font-size: 18px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.btn-icon:hover {
+  background: #334155;
+}
+
+.btn-create {
+  background: #3b82f6;
+  color: white;
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.btn-create:hover {
+  background: #2563eb;
+}
+
+.btn-select {
+  background: #22c55e;
+  color: white;
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.btn-select:hover {
+  background: #16a34a;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.actions button {
+  flex: 1;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
