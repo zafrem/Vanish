@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vanish Extension Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🔒 Vanish Extension Settings</h1>
+      <p class="subtitle">Configure keyword detection and secret scanning</p>
+    </header>
+
+    <section class="settings-section">
+      <h2>Detection Settings</h2>
+
+      <div class="setting-item">
+        <label class="checkbox-label">
+          <input type="checkbox" id="auto-scan" />
+          <span>Auto-scan pages for secrets</span>
+        </label>
+        <p class="help-text">Automatically scan web pages when they load</p>
+      </div>
+
+      <div class="setting-item">
+        <label class="checkbox-label">
+          <input type="checkbox" id="highlight-enabled" />
+          <span>Highlight detected secrets on page</span>
+        </label>
+        <p class="help-text">Visually highlight matches with colored backgrounds</p>
+      </div>
+
+      <div class="setting-item">
+        <label for="scan-delay">
+          Scan delay (milliseconds):
+        </label>
+        <input type="number" id="scan-delay" min="100" max="5000" step="100" />
+        <p class="help-text">Debounce time before rescanning after DOM changes</p>
+      </div>
+
+      <div class="setting-item">
+        <label for="max-matches">
+          Max matches per page:
+        </label>
+        <input type="number" id="max-matches" min="10" max="500" step="10" />
+        <p class="help-text">Maximum number of secrets to detect on a single page</p>
+      </div>
+    </section>
+
+    <section class="keywords-section">
+      <div class="section-header">
+        <h2>Keyword Patterns</h2>
+        <div class="header-actions">
+          <button id="add-keyword-btn" class="btn-primary">+ Add Keyword</button>
+          <button id="reset-defaults-btn" class="btn-secondary">Reset to Defaults</button>
+        </div>
+      </div>
+
+      <div id="keywords-list" class="keywords-list">
+        <!-- Keywords will be rendered here -->
+      </div>
+    </section>
+
+    <section class="auth-section">
+      <h2>Authentication Status</h2>
+
+      <div id="auth-status" class="auth-status">
+        <div class="loading">Checking...</div>
+      </div>
+
+      <div class="auth-actions">
+        <button id="refresh-token-btn" class="btn-secondary">Refresh Token</button>
+        <button id="clear-token-btn" class="btn-danger">Clear Token</button>
+      </div>
+    </section>
+
+    <div class="footer">
+      <div id="status-message" class="status-message"></div>
+      <button id="save-btn" class="btn-save">Save Settings</button>
+    </div>
+  </div>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>
