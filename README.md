@@ -3,6 +3,13 @@
   <h1>Vanish</h1>
 </div>
 
+
+## The Purpose Behind the Development
+
+"One day, someone sent me a token over a messenger app, and I completely forgot about it. When I stumbled upon it later and used it, it suddenly hit me: 'Wait, this is sensitive data. Is it really safe to leave it sitting in a chat like this?' I wanted a way to transfer secrets without prying eyes, and that’s exactly what led me to build this."
+
+---
+
 > An ephemeral messaging platform designed for secure, single-use information transfer.
 
 Welcome to **Vanish**, a secure messaging platform built for those times when you need to share sensitive information—like passwords, API keys, or certificates—without leaving a digital trail.
