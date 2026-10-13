@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -80,6 +81,27 @@ func DecryptMessage(ciphertext, iv, keyStr string) (string, error) {
 	return string(plaintext), nil
 }
 
+// errInvalidKey never includes the key itself, so it is safe to print.
+var errInvalidKey = errors.New("invalid encryption key: expected 32 bytes of base64")
+
+// DecodeKey decodes a link's encryption key. It accepts the URL-safe or
+// standard base64 alphabet, padded or unpadded (the frontend accepts all of
+// them too), and requires exactly 32 bytes. Call it before fetching a message
+// so a mistyped key does not burn it.
+func DecodeKey(s string) ([]byte, error) {
+	for _, enc := range []*base64.Encoding{
+		base64.URLEncoding, base64.RawURLEncoding, base64.StdEncoding, base64.RawStdEncoding,
+	} {
+		if b, err := enc.DecodeString(s); err == nil {
+			if len(b) != keySize {
+				return nil, errInvalidKey
+			}
+			return b, nil
+		}
+	}
+	return nil, errInvalidKey
+}
+
 // DecryptBytes decrypts a message encrypted with EncryptBytes (or by the
 // frontend) and returns the raw plaintext bytes. The key may be URL-safe or
 // standard base64.
@@ -94,14 +116,9 @@ func DecryptBytes(ciphertext, iv, keyStr string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to decode IV: %w", err)
 	}
 
-	// Key might be base64url encoded (URL-safe)
-	keyBytes, err := base64.URLEncoding.DecodeString(keyStr)
+	keyBytes, err := DecodeKey(keyStr)
 	if err != nil {
-		// Try standard base64 if URL encoding fails
-		keyBytes, err = base64.StdEncoding.DecodeString(keyStr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode key: %w", err)
-		}
+		return nil, err
 	}
 
 	block, err := aes.NewCipher(keyBytes)
