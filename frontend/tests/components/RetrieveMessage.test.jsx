@@ -119,6 +119,8 @@ describe('RetrieveMessage Component', () => {
 
       await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
       expect(save.mock.calls[0][1]).toBe('evil.txt');
+      // The sender-controlled MIME type must never reach the Blob.
+      expect(save.mock.calls[0]).toHaveLength(2);
       expect(copy).not.toHaveBeenCalled();
       expect(await screen.findByText(/evil\.txt/)).toBeInTheDocument();
       expect(screen.queryByText(/FILE-CONTENT/)).not.toBeInTheDocument();

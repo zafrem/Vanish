@@ -64,7 +64,7 @@ VNSHFILE1\n
 - `MAX_FILE_BYTES`, `packFile(file) -> Uint8Array`, `unpackEnvelope(bytes) -> {kind:'file',name,type,data} | {kind:'text',text}`, `sanitizeFilename(name)`.
 
 ### `lib/download.js` (new)
-- `saveBlob(data, name, type)`: Blob → object URL → temporary `<a download>` click → revoke URL. Returns a function that can re-trigger the save while the page is open.
+- `saveBlob(data, name)`: Blob (always `application/octet-stream`; the sender's MIME type is never used, because a same-origin blob a browser renders could run script) → object URL → temporary `<a download>` click → revoke URL. Returns a function that can re-trigger the save while the page is open.
 
 ### `components/CreateMessage.jsx`
 - Text / File toggle above the input.
