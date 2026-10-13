@@ -57,6 +57,9 @@ lerna-debug.log*
 coverage/
 .nyc_output
 
+# AI assistant
+CLAUDE.md
+
 # Misc
 .cache/
 *.tgz
