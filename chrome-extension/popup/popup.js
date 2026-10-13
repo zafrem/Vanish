@@ -117,7 +117,6 @@ class VanishPopup {
           ciphertext,
           iv,
           recipient_id: recipientId,
-          encryption_key: keyString,
           ttl: 86400 // 24 hours
         })
       });
