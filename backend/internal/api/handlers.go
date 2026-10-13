@@ -82,13 +82,12 @@ func (h *MessageHandler) CreateMessage(c *gin.Context) {
 
 	// Store metadata in PostgreSQL (sender, recipient, but NOT content)
 	metadata := &models.MessageMetadata{
-		MessageID:     id,
-		SenderID:      senderID.(int64),
-		RecipientID:   req.RecipientID,
-		EncryptionKey: req.EncryptionKey, // Store key for recipient link generation
-		Status:        models.StatusPending,
-		CreatedAt:     msg.CreatedAt,
-		ExpiresAt:     expiresAt,
+		MessageID:   id,
+		SenderID:    senderID.(int64),
+		RecipientID: req.RecipientID,
+		Status:      models.StatusPending,
+		CreatedAt:   msg.CreatedAt,
+		ExpiresAt:   expiresAt,
 	}
 
 	err = h.metadataRepo.Create(c.Request.Context(), metadata)

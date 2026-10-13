@@ -75,14 +75,9 @@ func InitSchema(db *sql.DB) error {
 	CREATE INDEX IF NOT EXISTS idx_metadata_recipient_id ON message_metadata(recipient_id);
 	CREATE INDEX IF NOT EXISTS idx_metadata_status ON message_metadata(status);
 
-	-- Add encryption_key column if it doesn't exist (for recipient link generation)
-	DO $$
-	BEGIN
-		IF NOT EXISTS (SELECT 1 FROM information_schema.columns
-					   WHERE table_name='message_metadata' AND column_name='encryption_key') THEN
-			ALTER TABLE message_metadata ADD COLUMN encryption_key TEXT;
-		END IF;
-	END $$;
+	-- The server must never store message keys. Older deployments added an
+	-- encryption_key column; drop it (this also erases any keys already stored).
+	ALTER TABLE message_metadata DROP COLUMN IF EXISTS encryption_key;
 
 	-- Add is_admin column if it doesn't exist
 	DO $$
