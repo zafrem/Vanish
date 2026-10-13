@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { generateKey, exportKey, encrypt } from '../lib/crypto';
+import React, { useState, useEffect, useRef } from 'react';
+import { generateKey, exportKey, encrypt, encryptBytes } from '../lib/crypto';
+import { packFile, validateFileForSend, formatBytes } from '../lib/fileEnvelope';
 import { createMessage, getUsers, sendSlackNotification, sendEmailNotification } from '../lib/api';
 import { generateShareableURL } from '../utils/urlHelpers';
 import { copyToClipboard } from '../lib/clipboard';
@@ -10,6 +11,10 @@ import { useAuth } from '../context/AuthContext';
  */
 export default function CreateMessage() {
   const [secretText, setSecretText] = useState('');
+  const [mode, setMode] = useState('text'); // 'text' | 'file'
+  const [file, setFile] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
   const [recipientId, setRecipientId] = useState('');
   const [ttl, setTTL] = useState(86400); // 24 hours default
   const [isCreating, setIsCreating] = useState(false);
@@ -80,6 +85,37 @@ export default function CreateMessage() {
     setIsDropdownOpen(true);
   };
 
+  const acceptFile = (candidate) => {
+    if (!candidate) return;
+    const problem = validateFileForSend(candidate);
+    if (problem) {
+      setFile(null);
+      setError(problem);
+      return;
+    }
+    setError(null);
+    setFile(candidate);
+  };
+
+  const handleFileSelected = (e) => acceptFile(e.target.files && e.target.files[0]);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (isCreating) return;
+    acceptFile(e.dataTransfer.files && e.dataTransfer.files[0]);
+  };
+
+  const handleRemoveFile = () => {
+    setFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const switchMode = (next) => {
+    setMode(next);
+    setError(null);
+  };
+
   const handleCreate = async (e) => {
     e.preventDefault();
     setError(null);
@@ -87,8 +123,12 @@ export default function CreateMessage() {
 
     try {
       // Validation
-      if (!secretText.trim()) {
+      if (mode === 'text' && !secretText.trim()) {
         throw new Error('Please enter a secret message');
+      }
+
+      if (mode === 'file' && !file) {
+        throw new Error('Please choose a file');
       }
 
       if (!recipientId) {
@@ -99,8 +139,10 @@ export default function CreateMessage() {
       const key = await generateKey();
       const keyString = await exportKey(key);
 
-      // Step 2: Encrypt the message (client-side)
-      const { ciphertext, iv } = await encrypt(secretText, key);
+      // Step 2: Encrypt the message or file (client-side)
+      const { ciphertext, iv } = mode === 'file'
+        ? await encryptBytes(await packFile(file), key)
+        : await encrypt(secretText, key);
 
       // Step 3: Send encrypted data to server with recipient ID and encryption key
       const response = await createMessage(ciphertext, iv, parseInt(recipientId), keyString, ttl);
@@ -111,6 +153,7 @@ export default function CreateMessage() {
 
       // Clear the input
       setSecretText('');
+      setFile(null);
       setSearchTerm('');
     } catch (err) {
       setError(err.message);
@@ -175,7 +218,7 @@ export default function CreateMessage() {
           <div className="text-center mb-6">
             <div className="text-6xl mb-4">🔗</div>
             <h2 className="text-2xl font-bold text-green-400 mb-2">Secret Created!</h2>
-            <p className="text-gray-400 text-sm">Share this link securely with the recipient</p>
+            <p className="text-gray-400 text-sm">Share this link securely with the recipient{mode === 'file' ? ' (it opens a file download)' : ''}</p>
           </div>
 
           <div className="bg-slate-900 rounded-lg p-4 mb-4 break-all font-mono text-sm">
@@ -316,17 +359,79 @@ export default function CreateMessage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Secret Message
-            </label>
-            <textarea
-              value={secretText}
-              onChange={(e) => setSecretText(e.target.value)}
-              placeholder="Enter password, API key, or sensitive data..."
-              rows={6}
-              className="w-full bg-slate-900 border border-dark-border rounded-lg px-4 py-3 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              disabled={isCreating}
-            />
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-300">
+                {mode === 'file' ? 'File' : 'Secret Message'}
+              </label>
+              <div className="inline-flex rounded-lg border border-dark-border overflow-hidden text-sm">
+                <button
+                  type="button"
+                  onClick={() => switchMode('text')}
+                  disabled={isCreating}
+                  aria-pressed={mode === 'text'}
+                  className={`px-3 py-1 ${mode === 'text' ? 'bg-slate-700 text-white' : 'text-gray-400 hover:bg-slate-800'}`}
+                >
+                  Text
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchMode('file')}
+                  disabled={isCreating}
+                  aria-pressed={mode === 'file'}
+                  className={`px-3 py-1 ${mode === 'file' ? 'bg-slate-700 text-white' : 'text-gray-400 hover:bg-slate-800'}`}
+                >
+                  File
+                </button>
+              </div>
+            </div>
+
+            {mode === 'text' ? (
+              <textarea
+                value={secretText}
+                onChange={(e) => setSecretText(e.target.value)}
+                placeholder="Enter password, API key, or sensitive data..."
+                rows={6}
+                className="w-full bg-slate-900 border border-dark-border rounded-lg px-4 py-3 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                disabled={isCreating}
+              />
+            ) : (
+              <div>
+                <input
+                  id="secret-file"
+                  ref={fileInputRef}
+                  type="file"
+                  className="sr-only"
+                  onChange={handleFileSelected}
+                  disabled={isCreating}
+                />
+                {file ? (
+                  <div className="flex items-center justify-between bg-slate-900 border border-dark-border rounded-lg px-4 py-3">
+                    <span className="text-gray-100 break-all">
+                      {file.name} <span className="text-gray-400 text-sm">({formatBytes(file.size)})</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveFile}
+                      disabled={isCreating}
+                      aria-label="Remove file"
+                      className="ml-3 text-gray-400 hover:text-gray-200 text-2xl leading-none"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor="secret-file"
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                    className={`block cursor-pointer text-center border-2 border-dashed rounded-lg px-4 py-8 text-gray-400 ${isDragging ? 'border-blue-500 bg-slate-800' : 'border-dark-border bg-slate-900'}`}
+                  >
+                    Drop a file here or click to choose a file (max 5 MB)
+                  </label>
+                )}
+              </div>
+            )}
           </div>
 
           <div>
@@ -355,7 +460,7 @@ export default function CreateMessage() {
 
           <button
             type="submit"
-            disabled={isCreating || !secretText.trim() || !recipientId}
+            disabled={isCreating || !recipientId || (mode === 'file' ? !file : !secretText.trim())}
             className="w-full bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isCreating ? 'Creating...' : 'Create Secret Link'}
@@ -365,7 +470,7 @@ export default function CreateMessage() {
         <div className="mt-6 text-xs text-gray-500 space-y-1">
           <p>🔐 Encrypted client-side before transmission</p>
           <p>👤 Only the selected recipient can read this message</p>
-          <p>🚫 Server never sees your plaintext message</p>
+          <p>🚫 Server never sees your plaintext message or file</p>
           <p>🔥 One-time access with automatic destruction</p>
         </div>
       </div>
