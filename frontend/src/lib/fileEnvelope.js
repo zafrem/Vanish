@@ -84,6 +84,10 @@ export function packEnvelope(name, type, bytes) {
   const header = new TextEncoder().encode(
     JSON.stringify({ name, type: type || DEFAULT_TYPE, size: bytes.length }) + '\n'
   );
+  // Receivers treat an over-long header as text, so refuse to build one.
+  if (header.length - 1 > MAX_HEADER_BYTES) {
+    throw new Error('File name or type is too long');
+  }
   const out = new Uint8Array(MAGIC_BYTES.length + header.length + bytes.length);
   out.set(MAGIC_BYTES, 0);
   out.set(header, MAGIC_BYTES.length);
@@ -110,21 +114,56 @@ function startsWithMagic(bytes) {
   return true;
 }
 
-function parseHeader(rest) {
-  const nl = rest.indexOf(10);
-  if (nl < 0 || nl > MAX_HEADER_BYTES) return null;
-  try {
-    const h = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(rest.subarray(0, nl)));
-    if (
-      h && typeof h.name === 'string' && typeof h.type === 'string' &&
-      Number.isInteger(h.size) && h.size >= 0
-    ) {
-      return { header: h, dataStart: nl + 1 };
+const REPLACEMENT_CHAR = String.fromCharCode(0xfffd);
+
+// Replace lone UTF-16 surrogates with U+FFFD, as Go's JSON decoder does.
+function toWellFormed(s) {
+  let out = '';
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length) {
+      const d = s.charCodeAt(i + 1);
+      if (d >= 0xdc00 && d <= 0xdfff) {
+        out += s[i] + s[i + 1];
+        i++;
+        continue;
+      }
     }
-  } catch {
-    // not an envelope header
+    out += c >= 0xd800 && c <= 0xdfff ? REPLACEMENT_CHAR : s[i];
   }
-  return null;
+  return out;
+}
+
+const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+
+/*
+ * Header rules, identical to Unpack in shared/crypto/envelope.go and pinned by
+ * shared/crypto/testdata/vector.json:
+ * - the header (bytes between the magic and the first \n, at most 4096) must
+ *   be valid UTF-8 and a JSON object (a BOM is kept and makes JSON.parse fail);
+ * - keys match exactly and case-sensitively; a duplicate key's last value wins;
+ * - name and type must be strings;
+ * - size must be an integral number (1.0 and 1e0 count as 1) in [0, MAX_FILE_BYTES].
+ */
+function parseHeader(rest) {
+  const nl = rest.subarray(0, MAX_HEADER_BYTES + 1).indexOf(10);
+  if (nl < 0) return null;
+  let h;
+  try {
+    h = JSON.parse(
+      new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(rest.subarray(0, nl))
+    );
+  } catch {
+    return null; // not an envelope header
+  }
+  if (h === null || typeof h !== 'object' || Array.isArray(h)) return null;
+  if (!own(h, 'name') || !own(h, 'type') || !own(h, 'size')) return null;
+  const { name, type, size } = h;
+  if (typeof name !== 'string' || typeof type !== 'string') return null;
+  if (typeof size !== 'number' || !Number.isInteger(size) || size < 0 || size > MAX_FILE_BYTES) {
+    return null;
+  }
+  return { header: { name: toWellFormed(name), type: toWellFormed(type), size }, dataStart: nl + 1 };
 }
 
 /**

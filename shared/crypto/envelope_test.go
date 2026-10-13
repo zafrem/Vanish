@@ -37,6 +37,27 @@ func TestPackFileLimits(t *testing.T) {
 	}
 }
 
+func TestPackFileHeaderTooLarge(t *testing.T) {
+	if _, err := PackFile(strings.Repeat("n", 5000), "t", []byte("x")); !errors.Is(err, ErrHeaderTooLarge) {
+		t.Fatalf("long name: want ErrHeaderTooLarge, got %v", err)
+	}
+	if _, err := PackFile("a", strings.Repeat("t", 5000), []byte("x")); !errors.Is(err, ErrHeaderTooLarge) {
+		t.Fatalf("long type: want ErrHeaderTooLarge, got %v", err)
+	}
+	// The longest name that still fits must round-trip as a file.
+	name := strings.Repeat("n", maxHeaderBytes-len(`{"name":"","type":"t","size":1}`))
+	packed, err := PackFile(name, "t", []byte("x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p, err := Unpack(packed); err != nil || p.Kind != KindFile || p.Name != name {
+		t.Fatalf("max-length header did not round-trip: %v", err)
+	}
+	if _, err := PackFile(name+"n", "t", []byte("x")); !errors.Is(err, ErrHeaderTooLarge) {
+		t.Fatalf("one byte over: want ErrHeaderTooLarge, got %v", err)
+	}
+}
+
 func TestUnpackPlainTextIsText(t *testing.T) {
 	for _, s := range []string{"hello", "", "こんにちは 🔒", "multi\nline"} {
 		p, err := Unpack([]byte(s))
