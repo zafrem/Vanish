@@ -469,8 +469,8 @@ export default function CreateMessage() {
 
         <div className="mt-6 text-xs text-gray-500 space-y-1">
           <p>🔐 Encrypted client-side before transmission</p>
-          <p>👤 Only the selected recipient can read this message</p>
-          <p>🚫 Server never sees your plaintext message or file</p>
+          <p>🔗 Share the link yourself - anyone who has it can read the message once</p>
+          <p>🚫 Server never sees your plaintext message, file or key</p>
           <p>🔥 One-time access with automatic destruction</p>
         </div>
       </div>

@@ -18,7 +18,7 @@ Vanish operates on a zero-knowledge architecture, which means the server never s
 
 ## Why Use Vanish?
 
-*   **Zero-Knowledge by Design**: We can't see your secrets, and neither can anyone else. The server never handles plaintext data.
+*   **Zero-Knowledge by Design**: We can't see your secrets, and neither can anyone else. For messages created in the web app, CLI or Chrome extension, the server never handles plaintext data or the decryption key (it lives only in the link's `#fragment`). **Caveat:** the Slack `/vanish` command encrypts on the server, so the server sees the secret in that path and it is not zero-knowledge.
 *   **Client-Side Encryption**: Your data is locked with AES-256-GCM encryption before it leaves your browser.
 *   **Burn-on-Read**: Once a message is viewed, it's gone. Automatically and permanently destroyed.
 *   **Clipboard Protection**: To prevent accidental leaks, secrets are copied directly to your clipboard instead of being displayed in the DOM.

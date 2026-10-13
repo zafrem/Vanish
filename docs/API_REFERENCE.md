@@ -188,7 +188,6 @@ Content-Type: application/json
 {
   "ciphertext": "base64-encoded-encrypted-data",
   "iv": "base64-encoded-initialization-vector",
-  "encryption_key": "client-side-encryption-key",
   "recipient_id": 2,
   "ttl": 86400
 }
@@ -280,11 +279,13 @@ Authorization: Bearer {token}
     "created_at": "2025-12-30T10:00:00Z",
     "expires_at": "2025-12-31T10:00:00Z",
     "is_sender": true,
-    "is_recipient": false,
-    "encryption_key": "key-here-if-recipient-and-pending"
+    "is_recipient": false
   }
 ]
 ```
+
+History returns metadata only. It never includes a decryption key or link; the
+sender shares the link (key in the `#fragment`) directly with the recipient.
 
 **Status values**: `pending`, `read`, `expired`
 
@@ -623,9 +624,13 @@ Additional origins can be configured via the `ALLOWED_ORIGINS` environment varia
 
 ## Security Notes
 
-1. **Zero-Knowledge**: Server never sees plaintext message content
+1. **Zero-Knowledge (web, CLI, Chrome extension)**: The key stays in the link
+   fragment; the server only receives ciphertext + IV and never receives or
+   stores the key. A legacy `encryption_key` field in a create request is ignored.
+   **Exception**: the Slack `/vanish` flow encrypts on the server, so the server
+   sees the secret in that path and it is not zero-knowledge.
 2. **Burn-on-Read**: Messages are permanently deleted after first read
-3. **Admin Limitations**: Even admins cannot read encrypted message content
+3. **Admin Limitations**: For messages created via web/CLI/extension, admins cannot read content (no key is available server-side)
 4. **Password Hashing**: All passwords are hashed with bcrypt
 5. **JWT Tokens**: Tokens expire after 24 hours (configurable)
 6. **HTTPS Required**: Use HTTPS in production for clipboard API and security
@@ -659,7 +664,6 @@ curl -X POST http://localhost:8080/api/messages \
   -d '{
     "ciphertext":"encrypted-data",
     "iv":"iv-data",
-    "encryption_key":"key-123",
     "recipient_id":2,
     "ttl":3600
   }'
