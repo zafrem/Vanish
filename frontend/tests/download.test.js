@@ -17,13 +17,20 @@ describe('saveBlob', () => {
   });
 
   test('triggers a download with the given name and revokes the URL', () => {
-    saveBlob(new Uint8Array([1, 2, 3]), 'a.bin', 'application/octet-stream');
+    saveBlob(new Uint8Array([1, 2, 3]), 'a.bin');
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
     expect(click).toHaveBeenCalledTimes(1);
     expect(click.mock.instances[0].__clicked.download).toBe('a.bin');
     vi.advanceTimersByTime(1500);
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock');
     expect(document.querySelectorAll('a[download]').length).toBe(0);
+  });
+
+  test('always uses application/octet-stream, never a sender-supplied type', () => {
+    saveBlob(new Uint8Array([1]), 'a.html', 'text/html');
+    const blob = URL.createObjectURL.mock.calls[0][0];
+    expect(blob).toBeInstanceOf(Blob);
+    expect(blob.type).toBe('application/octet-stream');
   });
 
   test('returned function saves again', () => {

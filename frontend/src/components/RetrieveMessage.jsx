@@ -88,7 +88,7 @@ export default function RetrieveMessage() {
       if (payload.kind === 'file') {
         // Step 5a: Save the file straight to disk without rendering it
         const safeName = sanitizeFilename(payload.name);
-        resaveRef.current = saveBlob(payload.data, safeName, payload.type);
+        resaveRef.current = saveBlob(payload.data, safeName);
         setBurnedInfo({ kind: 'file', name: safeName });
       } else {
         // Step 5b: Copy text directly to clipboard without rendering
