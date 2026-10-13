@@ -134,6 +134,8 @@ server {
 
     # Backend API
     location /api/ {
+        # 8m is required for file messages up to 5 MiB (base64 + JSON overhead).
+        client_max_body_size 8m;
         proxy_pass http://localhost:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
