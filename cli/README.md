@@ -5,6 +5,7 @@ Command-line tool for securely sharing secrets via the Vanish platform.
 ## Features
 
 - 🔐 **Client-side encryption** (AES-256-GCM)
+- 📎 **File transfer** (up to 5 MiB, encrypted end to end)
 - 📋 **Stdin support** for piping secrets
 - ⚡ **Fast** (~2.6µs per encryption)
 - 🔔 **Slack notifications** (optional)
@@ -50,17 +51,41 @@ echo "API_KEY=secret" | vanish send user@example.com
 vanish send user@example.com -ttl 3600 "Temporary password"
 ```
 
+### 3. Send a File
+
+```bash
+vanish send user@example.com -file ./credentials.pdf
+```
+
+### 4. Receive a Secret or File
+
+```bash
+# Text is printed to stdout; a file is saved to the current directory
+vanish get "https://vanish.example.com/m/abc123#KEY"
+
+# Save a file to a specific path (refuses to overwrite unless -force)
+vanish get -o ./out.pdf "https://vanish.example.com/m/abc123#KEY"
+```
+
+Reading a link destroys the message. An explicit `-o` path is checked before
+the message is fetched, so a bad destination does not burn it. Without `-o`
+an existing file is never overwritten: `report.pdf` is saved as `report-1.pdf`.
+
 ## Usage
 
 ```
 Vanish CLI Tool
 
 Usage:
-  vanish config             Configure the CLI (interactive)
-  vanish send <email> [msg] Send a secret to a user
+  vanish config                         Configure the CLI (interactive)
+  vanish send <email> [msg]             Send a secret to a user
+  vanish send <email> -file <path>      Send a file (max 5 MiB)
+  vanish get <link>                     Read a secret (text to stdout, files saved)
+  vanish get -o <path> [-force] <link>  Save a received file to <path>
 
 Flags for send:
-  -ttl <seconds>            Expiration time (default 86400)
+  -ttl <seconds>                        Expiration time (default 86400)
+  -file <path>                          File to send instead of a message
 ```
 
 ## Configuration

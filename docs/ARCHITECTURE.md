@@ -230,3 +230,27 @@ CREATE TABLE message_metadata (
 - Max message size: 10 MB (configurable)
 - Max TTL: 7 days (configurable)
 - Min TTL: 1 hour (configurable)
+
+## File Messages
+
+Files travel through the normal message path. The sender's client builds an
+envelope, encrypts it, and uploads ciphertext + IV like any other message:
+
+```
+VNSHFILE1\n
+{"name":"<string>","type":"<mime>","size":<int>}\n
+<raw file bytes>
+```
+
+- The server cannot tell a file from text, and never sees the file name, type
+  or content. PostgreSQL metadata, notifications and logs carry none of them.
+- Limits: 5 MiB per file (enforced by clients), 8 MiB request body (backend
+  `BodyLimit`, nginx `client_max_body_size 8m` on `/api/`). Larger bodies get
+  `413`.
+- On receipt, plaintext starting with the magic and a valid header is a file;
+  anything else is text. File names are sanitized (base name only, no control
+  characters or `:*?"<>|`, <= 255 bytes) before any write or download.
+- Redis holds the ciphertext (up to ~7 MB per file message) until it is read
+  or its TTL expires; there is no per-user cap on pending file messages.
+- `shared/crypto/envelope.go` and `frontend/src/lib/fileEnvelope.js` must stay
+  in sync; `shared/crypto/testdata/vector.json` is read by both test suites.
