@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -68,8 +69,11 @@ func TestGetFileToExplicitPath(t *testing.T) {
 	if !bytes.Equal(got, data) {
 		t.Fatalf("content mismatch: %x", got)
 	}
-	if info, _ := os.Stat(out); info.Mode().Perm() != 0o600 {
-		t.Fatalf("mode = %v, want 0600", info.Mode().Perm())
+	// Windows has no Unix permission bits (files report 0666).
+	if runtime.GOOS != "windows" {
+		if info, _ := os.Stat(out); info.Mode().Perm() != 0o600 {
+			t.Fatalf("mode = %v, want 0600", info.Mode().Perm())
+		}
 	}
 }
 
