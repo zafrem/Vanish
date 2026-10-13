@@ -16,6 +16,22 @@ const MAX_FILENAME_BYTES = 255;
 const DEFAULT_FILENAME = 'vanish-file';
 const DEFAULT_TYPE = 'application/octet-stream';
 
+/*
+ * Characters removed from file names (same as dropFilenameRune in Go): C0 and
+ * C1 controls, DEL, U+FFFD, lone surrogates, bidi marks and
+ * embeddings/overrides/isolates (which can disguise an extension), and
+ * characters Windows forbids.
+ */
+function dropFilenameChar(ch) {
+  const c = ch.codePointAt(0);
+  return (
+    c < 0x20 || c === 0x7f || (c >= 0x80 && c <= 0x9f) ||
+    c === 0xfffd || (c >= 0xd800 && c <= 0xdfff) ||
+    c === 0x200e || c === 0x200f || (c >= 0x202a && c <= 0x202e) || (c >= 0x2066 && c <= 0x2069) ||
+    ':*?"<>|'.includes(ch)
+  );
+}
+
 /**
  * Reduce a sender-supplied name to a safe base name (same rules as Go).
  * @param {string} name
@@ -27,11 +43,7 @@ export function sanitizeFilename(name) {
   if (slash >= 0) s = s.slice(slash + 1);
 
   s = Array.from(s)
-    .filter((ch) => {
-      const c = ch.codePointAt(0);
-      const surrogate = c >= 0xd800 && c <= 0xdfff;
-      return !(c < 0x20 || c === 0x7f || c === 0xfffd || surrogate || ':*?"<>|'.includes(ch));
-    })
+    .filter((ch) => !dropFilenameChar(ch))
     .join('');
 
   const trim = (v) => v.replace(/^[ .]+|[ .]+$/g, '');

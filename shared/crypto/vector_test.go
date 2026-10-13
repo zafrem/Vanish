@@ -169,6 +169,20 @@ func buildVector(t *testing.T) vectorFile {
 			{"dir/", "vanish-file"},
 			{strings.Repeat("a", 300), strings.Repeat("a", 255)},
 			{strings.Repeat("가", 100), strings.Repeat("가", 85)},
+			// 2-byte runes: 127 x "é" is 254 bytes; a 128th would cross 255.
+			{strings.Repeat("é", 200), strings.Repeat("é", 127)},
+			// Byte escapes (not \u) keep invisible characters visible here.
+			{"a\xe2\x80\xaefdp.exe", "afdp.exe"},                             // U+202E RLO
+			{"x\xc2\x85y.txt", "xy.txt"},                                     // U+0085 NEL (C1)
+			{"a\xc2\x80b\xc2\x9fc", "abc"},                                   // U+0080, U+009F (C1 bounds)
+			{"a\xe2\x80\x8eb", "ab"},                                         // U+200E LRM
+			{"a\xe2\x80\x8fb", "ab"},                                         // U+200F RLM
+			{"\xe2\x80\xaaa\xe2\x80\xacb\xe2\x80\xad.txt", "ab.txt"},         // U+202A, U+202C, U+202D
+			{"a\xe2\x81\xa6b\xe2\x81\xa7c\xe2\x81\xa8d\xe2\x81\xa9", "abcd"}, // U+2066..U+2069
+			{"a\xef\xbf\xbdb", "ab"},                                         // U+FFFD
+			{"a\x7fb", "ab"},                                                 // DEL
+			{"a\xc2\xa0b", "a\xc2\xa0b"},                                     // U+00A0 is kept (not C1)
+			{"\xe2\x80\x8e. report.pdf", "report.pdf"},                       // trim after stripping
 		},
 		Unpack: unpackCases(),
 	}
