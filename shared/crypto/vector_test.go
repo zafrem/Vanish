@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -223,16 +224,20 @@ func TestVector(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// The committed file must equal what the current code produces.
-	if want := buildVector(t); want.FileCiphertext != v.FileCiphertext || want.KeyURL != v.KeyURL {
+	// The committed file must equal, field for field, what the current code
+	// produces (including every sanitize and unpack case).
+	if want := buildVector(t); !reflect.DeepEqual(want, v) {
 		t.Fatal("vector.json is stale; regenerate with VANISH_WRITE_VECTOR=1")
 	}
 
-	data, _ := base64.StdEncoding.DecodeString(v.FileDataB64)
-	for _, key := range []string{v.KeyURL, v.KeyStd} {
+	data, err := base64.StdEncoding.DecodeString(v.FileDataB64)
+	if err != nil {
+		t.Fatalf("bad file_data_b64: %v", err)
+	}
+	for label, key := range map[string]string{"url-safe": v.KeyURL, "standard": v.KeyStd} {
 		plain, err := DecryptBytes(v.FileCiphertext, v.IV, key)
 		if err != nil {
-			t.Fatalf("decrypt with key %q: %v", key, err)
+			t.Fatalf("decrypt with %s key: %v", label, err)
 		}
 		p, err := Unpack(plain)
 		if err != nil {
@@ -244,11 +249,17 @@ func TestVector(t *testing.T) {
 	}
 
 	parts := strings.SplitN(v.TextCiphertext, "|", 2)
+	if len(parts) != 2 {
+		t.Fatal("text_ciphertext must be <ciphertext>|<iv>")
+	}
 	plain, err := DecryptBytes(parts[0], parts[1], v.KeyURL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, _ := Unpack(plain)
+	p, err := Unpack(plain)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if p.Kind != KindText || p.Text != v.TextPlain {
 		t.Fatalf("unexpected text payload %+v", p)
 	}
