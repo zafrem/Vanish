@@ -67,8 +67,9 @@ vanish get "https://vanish.example.com/m/abc123#KEY"
 vanish get -o ./out.pdf "https://vanish.example.com/m/abc123#KEY"
 ```
 
-Reading a link destroys the message. An explicit `-o` path is checked before
-the message is fetched, so a bad destination does not burn it. Without `-o`
+Reading a link destroys the message. The link's key and an explicit `-o` path
+are checked before the message is fetched, so a mistyped key or a bad
+destination does not burn it. Without `-o`
 an existing file is never overwritten: `report.pdf` is saved as `report-1.pdf`.
 
 Newly created files are written with permissions `0600`. `-force` overwrites an
