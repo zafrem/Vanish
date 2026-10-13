@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { importKey, decrypt } from '../lib/crypto';
+import { importKey, decryptBytes } from '../lib/crypto';
 import { getMessage, checkMessageExists } from '../lib/api';
 import { extractKeyFromURL } from '../utils/urlHelpers';
 import { copyToClipboard, clearSensitiveData } from '../lib/clipboard';
+import { unpackEnvelope, sanitizeFilename } from '../lib/fileEnvelope';
+import { saveBlob } from '../lib/download';
 
 /**
  * RetrieveMessage component for viewing and burning secrets
@@ -18,6 +20,10 @@ export default function RetrieveMessage() {
   const [isBurning, setIsBurning] = useState(false);
   const [isBurned, setIsBurned] = useState(false);
   const [error, setError] = useState(null);
+  const [burnedInfo, setBurnedInfo] = useState(null); // { kind: 'text' } | { kind: 'file', name }
+  const resaveRef = useRef(null); // closure over the decrypted file; never put in state
+
+  useEffect(() => () => { resaveRef.current = null; }, []);
 
   useEffect(() => {
     checkMessage();
@@ -76,16 +82,26 @@ export default function RetrieveMessage() {
       const { ciphertext, iv } = await getMessage(id);
 
       // Step 4: Decrypt in memory (NOT in state - stays in closure)
-      decryptedSecret = await decrypt(ciphertext, iv, encryptionKey);
+      const bytes = await decryptBytes(ciphertext, iv, encryptionKey);
+      const payload = unpackEnvelope(bytes);
 
-      // Step 5: Copy directly to clipboard without rendering
-      const result = await copyToClipboard(decryptedSecret);
+      if (payload.kind === 'file') {
+        // Step 5a: Save the file straight to disk without rendering it
+        const safeName = sanitizeFilename(payload.name);
+        resaveRef.current = saveBlob(payload.data, safeName, payload.type);
+        setBurnedInfo({ kind: 'file', name: safeName });
+      } else {
+        // Step 5b: Copy text directly to clipboard without rendering
+        decryptedSecret = payload.text;
+        const result = await copyToClipboard(decryptedSecret);
 
-      if (!result.success) {
-        throw new Error('Failed to copy to clipboard: ' + (result.error || 'Unknown error'));
+        if (!result.success) {
+          throw new Error('Failed to copy to clipboard: ' + (result.error || 'Unknown error'));
+        }
+        setBurnedInfo({ kind: 'text' });
       }
 
-      // Success! Message is burned and copied
+      // Success! Message is burned and delivered
       setIsBurned(true);
 
       // Clear sensitive data from memory (best effort)
@@ -128,14 +144,35 @@ export default function RetrieveMessage() {
         <div className="bg-dark-card border border-dark-border rounded-lg p-8 shadow-2xl text-center">
           <div className="text-6xl mb-4 animate-burn">🔥</div>
           <h2 className="text-2xl font-bold text-orange-400 mb-4">Message Burned!</h2>
-          <p className="text-gray-300 mb-2">Secret copied to your clipboard</p>
-          <p className="text-sm text-gray-500 mb-6">
-            The message has been permanently destroyed
-          </p>
-
-          <div className="bg-yellow-900/30 border border-yellow-600 text-yellow-300 px-4 py-3 rounded-lg text-sm mb-4">
-            ⚠️ Paste the secret now - it's not stored anywhere
-          </div>
+          {burnedInfo && burnedInfo.kind === 'file' ? (
+            <>
+              <p className="text-gray-300 mb-2">
+                File downloaded as <span className="font-mono break-all">{burnedInfo.name}</span>
+              </p>
+              <p className="text-sm text-gray-500 mb-6">
+                The message has been permanently destroyed
+              </p>
+              <div className="bg-yellow-900/30 border border-yellow-600 text-yellow-300 px-4 py-3 rounded-lg text-sm mb-4">
+                ⚠️ Didn't get the file? Save it now - it can't be fetched again
+              </div>
+              <button
+                onClick={() => resaveRef.current && resaveRef.current()}
+                className="w-full bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 mb-3"
+              >
+                Save again
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-gray-300 mb-2">Secret copied to your clipboard</p>
+              <p className="text-sm text-gray-500 mb-6">
+                The message has been permanently destroyed
+              </p>
+              <div className="bg-yellow-900/30 border border-yellow-600 text-yellow-300 px-4 py-3 rounded-lg text-sm mb-4">
+                ⚠️ Paste the secret now - it's not stored anywhere
+              </div>
+            </>
+          )}
 
           <button
             onClick={() => navigate('/')}
@@ -173,9 +210,9 @@ export default function RetrieveMessage() {
     <div className="w-full max-w-md mx-auto">
       <div className="bg-dark-card border border-dark-border rounded-lg p-8 shadow-2xl text-center">
         <div className="text-6xl mb-4">🔒</div>
-        <h2 className="text-2xl font-bold mb-4">Secret Message Awaits</h2>
+        <h2 className="text-2xl font-bold mb-4">Secret Awaits</h2>
         <p className="text-gray-400 mb-6">
-          Click the button below to reveal and copy the secret
+          Click the button below to reveal the secret. Text is copied to your clipboard; a file is downloaded.
         </p>
 
         <div className="bg-red-900/30 border border-red-500 text-red-300 px-4 py-3 rounded-lg text-sm mb-6 space-y-2">
@@ -201,17 +238,17 @@ export default function RetrieveMessage() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Copying & Burning...
+              Decrypting & Burning...
             </span>
           ) : (
-            '🔥 Copy to Clipboard & Destroy Message'
+            '🔥 Reveal & Destroy Message'
           )}
         </button>
 
         <div className="mt-6 text-xs text-gray-500 space-y-1">
           <p>🔐 Decryption happens locally in your browser</p>
-          <p>👁️ Secret will NOT be displayed on screen</p>
-          <p>📋 It will be copied directly to your clipboard</p>
+          <p>👁️ Secrets are NOT displayed on screen</p>
+          <p>📋 Text goes to your clipboard; files are saved to your downloads</p>
         </div>
       </div>
     </div>
