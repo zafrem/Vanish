@@ -227,7 +227,7 @@ CREATE TABLE message_metadata (
 - Increase CPU for more concurrent requests
 
 **Limits**
-- Max message size: 10 MB (configurable)
+- Max request body: 8 MiB (fixed in code and nginx; files are at most 5 MiB, enforced by clients)
 - Max TTL: 7 days (configurable)
 - Min TTL: 1 hour (configurable)
 
