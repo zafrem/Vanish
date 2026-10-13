@@ -5,7 +5,7 @@ Command-line tool for securely sharing secrets via the Vanish platform.
 ## Features
 
 - 🔐 **Client-side encryption** (AES-256-GCM)
-- 📎 **File transfer** (up to 5 MiB, encrypted end to end)
+- 📎 **File transfer** (up to 5 MiB, client-side encryption)
 - 📋 **Stdin support** for piping secrets
 - ⚡ **Fast** (~2.6µs per encryption)
 - 🔔 **Slack notifications** (optional)
@@ -70,6 +70,9 @@ vanish get -o ./out.pdf "https://vanish.example.com/m/abc123#KEY"
 Reading a link destroys the message. An explicit `-o` path is checked before
 the message is fetched, so a bad destination does not burn it. Without `-o`
 an existing file is never overwritten: `report.pdf` is saved as `report-1.pdf`.
+
+Newly created files are written with permissions `0600`. `-force` overwrites an
+existing file, whether the path comes from `-o` or is the default file name.
 
 ## Usage
 
