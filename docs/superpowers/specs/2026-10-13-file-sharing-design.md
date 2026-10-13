@@ -34,11 +34,16 @@ VNSHFILE1\n
 - Text messages are unchanged byte-for-byte, so existing links and older clients keep working.
 - Decrypt side: if the plaintext starts with `VNSHFILE1\n` it is parsed as a file; otherwise it is text. A text message that happens to start with that exact prefix and then fails header parsing is treated as text. One that parses as a valid header is treated as a file (accepted, negligible risk).
 - `size` must equal the number of data bytes; a mismatch is an error.
-- Header line is limited to 4 KiB.
+- Header line is limited to 4 KiB (4096 bytes before the first `\n`; the newline search only looks that far). Senders refuse to build a longer header ("File name or type is too long" / `ErrHeaderTooLarge`).
+- A valid header (anything else is text), identical in Go and JS and pinned by the `unpack` cases in `shared/crypto/testdata/vector.json`:
+  - the header bytes are valid UTF-8 (a leading BOM is kept, so it fails JSON parsing) and parse as a JSON object;
+  - keys match exactly and case-sensitively (`name`, `type`, `size`); for a duplicate key the last value wins;
+  - `name` and `type` are JSON strings (lone UTF-16 surrogate escapes become U+FFFD);
+  - `size` is a JSON number with an integral value in `[0, 5242880]`; integral floats such as `1.0` and `1e0` count (JavaScript numbers cannot tell them apart from `1`), while fractional, negative, over-limit and out-of-range values are not.
 
 ### Filename handling (both JS and Go)
 
-`SanitizeFilename(name)`: take the base name after the last `/` or `\`; remove control characters (< 0x20, 0x7F) and `:*?"<>|`; trim leading/trailing spaces and dots; cap at 255 bytes without splitting a UTF-8 sequence; if the result is empty use `vanish-file`. The sanitized name is used for every write/download. The raw name is never used.
+`SanitizeFilename(name)`: take the base name after the last `/` or `\`; remove C0 control characters (< 0x20), DEL (0x7F), C1 control characters (U+0080–U+009F), U+FFFD (and, in JS, lone surrogates), the bidi marks and embedding/override/isolate characters U+200E, U+200F, U+202A–U+202E and U+2066–U+2069 (they can disguise an extension, e.g. `a<U+202E>fdp.exe`), and `:*?"<>|`; trim leading/trailing spaces and dots; cap at 255 bytes without splitting a UTF-8 sequence; if the result is empty use `vanish-file`. The sanitized name is used for every write/download. The raw name is never used.
 
 ## Limits
 
@@ -59,7 +64,7 @@ VNSHFILE1\n
 - `MAX_FILE_BYTES`, `packFile(file) -> Uint8Array`, `unpackEnvelope(bytes) -> {kind:'file',name,type,data} | {kind:'text',text}`, `sanitizeFilename(name)`.
 
 ### `lib/download.js` (new)
-- `saveBlob(data, name, type)`: Blob → object URL → temporary `<a download>` click → revoke URL. Returns a function that can re-trigger the save while the page is open.
+- `saveBlob(data, name)`: Blob (always `application/octet-stream`; the sender's MIME type is never used, because a same-origin blob a browser renders could run script) → object URL → temporary `<a download>` click → revoke URL. Returns a function that can re-trigger the save while the page is open.
 
 ### `components/CreateMessage.jsx`
 - Text / File toggle above the input.

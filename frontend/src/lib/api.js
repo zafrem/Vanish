@@ -46,6 +46,10 @@ export async function createMessage(ciphertext, iv, recipientId, encryptionKey, 
   });
 
   if (!response.ok) {
+    // A proxy's own 413 body is HTML, so map the status before parsing JSON.
+    if (response.status === 413) {
+      throw new Error('Message too large for the server (max 5 MB per file)');
+    }
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || 'Failed to create message');
   }

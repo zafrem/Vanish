@@ -49,9 +49,16 @@ export async function importKey(base64Key) {
  * @returns {Promise<{ciphertext: string, iv: string}>} Encrypted data and IV
  */
 export async function encrypt(plaintext, key) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(plaintext);
+  return encryptBytes(new TextEncoder().encode(plaintext), key);
+}
 
+/**
+ * Encrypt raw bytes using AES-256-GCM
+ * @param {Uint8Array} data - The bytes to encrypt
+ * @param {CryptoKey} key - The encryption key
+ * @returns {Promise<{ciphertext: string, iv: string}>} Encrypted data and IV
+ */
+export async function encryptBytes(data, key) {
   // Generate random 96-bit IV (recommended for GCM)
   const iv = crypto.getRandomValues(new Uint8Array(12));
 
@@ -75,6 +82,18 @@ export async function encrypt(plaintext, key) {
  * @returns {Promise<string>} Decrypted plaintext
  */
 export async function decrypt(ciphertextBase64, ivBase64, key) {
+  const bytes = await decryptBytes(ciphertextBase64, ivBase64, key);
+  return new TextDecoder().decode(bytes);
+}
+
+/**
+ * Decrypt ciphertext to raw bytes using AES-256-GCM
+ * @param {string} ciphertextBase64 - Base64-encoded ciphertext
+ * @param {string} ivBase64 - Base64-encoded IV
+ * @param {CryptoKey} key - The decryption key
+ * @returns {Promise<Uint8Array>} Decrypted bytes
+ */
+export async function decryptBytes(ciphertextBase64, ivBase64, key) {
   const ciphertext = base64ToArrayBuffer(ciphertextBase64);
   const iv = base64ToArrayBuffer(ivBase64);
 
@@ -84,9 +103,7 @@ export async function decrypt(ciphertextBase64, ivBase64, key) {
       key,
       ciphertext
     );
-
-    const decoder = new TextDecoder();
-    return decoder.decode(decrypted);
+    return new Uint8Array(decrypted);
   } catch (error) {
     throw new Error('Decryption failed. The key may be incorrect or the message corrupted.');
   }
@@ -99,20 +116,24 @@ export async function decrypt(ciphertextBase64, ivBase64, key) {
  */
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
+  const CHUNK = 0x8000;
   let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
   }
   return btoa(binary);
 }
 
 /**
- * Convert base64 string to ArrayBuffer
+ * Convert a base64 or base64url string (padded or not) to ArrayBuffer.
+ * The Go CLI generates URL-safe keys, so '-' and '_' must be accepted.
  * @param {string} base64
  * @returns {ArrayBuffer}
  */
 function base64ToArrayBuffer(base64) {
-  const binary = atob(base64);
+  let normalized = base64.replace(/-/g, '+').replace(/_/g, '/');
+  while (normalized.length % 4 !== 0) normalized += '=';
+  const binary = atob(normalized);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i);

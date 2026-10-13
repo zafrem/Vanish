@@ -674,6 +674,12 @@ curl -X GET "http://localhost:8080/api/history" \
   -H "Authorization: Bearer $RECIPIENT_TOKEN"
 ```
 
+## Message Size Limit
+
+`POST /api/messages` accepts a JSON body of at most 8 MiB. A larger body is
+rejected with `413 Request Entity Too Large` and `{"error":"Message too large"}`.
+A 5 MiB file becomes about 7 MB after encryption and base64 encoding.
+
 ---
 
 **Generated**: 2025-12-31
