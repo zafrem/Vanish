@@ -114,6 +114,11 @@ func DecryptBytes(ciphertext, iv, keyStr string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to create GCM: %w", err)
 	}
 
+	// gcm.Open panics on a wrong-length nonce; the IV comes from the server.
+	if len(ivBytes) != gcm.NonceSize() {
+		return nil, fmt.Errorf("invalid IV length %d", len(ivBytes))
+	}
+
 	plaintext, err := gcm.Open(nil, ivBytes, ciphertextBytes, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt: %w", err)

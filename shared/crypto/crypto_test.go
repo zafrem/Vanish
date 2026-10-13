@@ -304,6 +304,26 @@ func TestTextWrappersMatchBytes(t *testing.T) {
 	}
 }
 
+func TestDecryptBytesWrongIVLengthIsError(t *testing.T) {
+	enc, err := EncryptBytes([]byte("secret"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range []int{0, 11, 13, 16} {
+		iv := base64.StdEncoding.EncodeToString(make([]byte, n))
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("IV length %d panicked: %v", n, r)
+				}
+			}()
+			if _, err := DecryptBytes(enc.Ciphertext, iv, enc.Key); err == nil {
+				t.Fatalf("IV length %d: expected an error", n)
+			}
+		}()
+	}
+}
+
 // Helper function for min (Go 1.21+)
 func min(a, b int) int {
 	if a < b {
