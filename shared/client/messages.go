@@ -14,11 +14,10 @@ import (
 // Returns the message URL and response
 func (c *Client) SendMessage(recipientID int64, encrypted *crypto.EncryptedMessage, ttl int64) (string, *models.CreateMessageResponse, error) {
 	payload := models.CreateMessageRequest{
-		Ciphertext:    encrypted.Ciphertext,
-		IV:            encrypted.IV,
-		RecipientID:   recipientID,
-		EncryptionKey: encrypted.Key,
-		TTL:           ttl,
+		Ciphertext:  encrypted.Ciphertext,
+		IV:          encrypted.IV,
+		RecipientID: recipientID,
+		TTL:         ttl,
 	}
 
 	resp, err := c.doRequest("POST", "/api/messages", payload)
@@ -37,7 +36,7 @@ func (c *Client) SendMessage(recipientID int64, encrypted *crypto.EncryptedMessa
 	}
 
 	// Construct shareable URL
-	// Format: {baseURL}/m/{messageID}#{encryptionKey}
+	// Format: {baseURL}/m/{messageID}#{key}
 	url := fmt.Sprintf("%s/m/%s#%s", c.config.BaseURL, result.ID, encrypted.Key)
 
 	return url, &result, nil
