@@ -242,8 +242,14 @@ VNSHFILE1\n
 <raw file bytes>
 ```
 
-- The server cannot tell a file from text, and never sees the file name, type
-  or content. PostgreSQL metadata, notifications and logs carry none of them.
+- The server cannot tell a file from text, and never receives the file name,
+  type or content in plaintext (they are encrypted in the client before
+  upload). PostgreSQL metadata, notifications and logs carry none of them.
+- Known limitation: the backend currently stores the message's encryption key
+  in its PostgreSQL metadata (`EncryptionKey` in
+  `backend/internal/api/handlers.go`), so an operator with both database and
+  Redis access could decrypt messages, files included. This should be fixed
+  separately so the server is unable to decrypt.
 - Limits: 5 MiB per file (enforced by clients), 8 MiB request body (backend
   `BodyLimit`, nginx `client_max_body_size 8m` on `/api/`). Larger bodies get
   `413`.
