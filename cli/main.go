@@ -19,6 +19,7 @@ func main() {
 
 	// Send flags
 	ttl := sendCmd.Int64("ttl", 86400, "Time to live in seconds (default 24h)")
+	filePath := sendCmd.String("file", "", "Send this file (max 5 MiB) instead of a text message")
 
 	if len(os.Args) < 2 {
 		printHelp()
@@ -30,8 +31,8 @@ func main() {
 		configCmd.Parse(os.Args[2:])
 		runConfig()
 	case "send":
-		sendCmd.Parse(os.Args[2:])
-		runSend(sendCmd.Args(), *ttl)
+		args, _ := parseInterspersed(sendCmd, os.Args[2:], true)
+		runSend(args, *ttl, *filePath)
 	default:
 		printHelp()
 		os.Exit(1)
@@ -42,11 +43,13 @@ func printHelp() {
 	fmt.Println("Vanish CLI Tool")
 	fmt.Println()
 	fmt.Println("Usage:")
-	fmt.Println("  vanish config             Configure the CLI (interactive)")
-	fmt.Println("  vanish send <email> [msg] Send a secret to a user")
+	fmt.Println("  vanish config                         Configure the CLI (interactive)")
+	fmt.Println("  vanish send <email> [msg]             Send a secret to a user")
+	fmt.Println("  vanish send <email> -file <path>      Send a file (max 5 MiB)")
 	fmt.Println()
 	fmt.Println("Flags for send:")
-	fmt.Println("  -ttl <seconds>            Expiration time (default 86400)")
+	fmt.Println("  -ttl <seconds>                        Expiration time (default 86400)")
+	fmt.Println("  -file <path>                          File to send instead of a message")
 }
 
 func runConfig() {
@@ -76,7 +79,7 @@ func runConfig() {
 	fmt.Println("Configuration saved successfully!")
 }
 
-func runSend(args []string, ttl int64) {
+func runSend(args []string, ttl int64, filePath string) {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		fmt.Printf("Error loading config: %v\nRun 'vanish config' first.\n", err)
@@ -84,42 +87,56 @@ func runSend(args []string, ttl int64) {
 	}
 
 	if len(args) < 1 {
-		fmt.Println("Usage: vanish send <email> [message]")
+		fmt.Println("Usage: vanish send <email> [message]  |  vanish send <email> -file <path>")
 		os.Exit(1)
 	}
 
 	recipientEmail := args[0]
-	var secret string
+	var payload []byte
 
-	if len(args) > 1 {
-		secret = strings.Join(args[1:], " ")
-	} else {
-		// Read from stdin
-		info, err := os.Stdin.Stat()
-		if err != nil {
-			fmt.Printf("Error checking stdin: %v\n", err)
+	if filePath != "" {
+		if len(args) > 1 {
+			fmt.Println("Error: -file cannot be combined with an inline message")
 			os.Exit(1)
 		}
-
-		if (info.Mode() & os.ModeCharDevice) == 0 {
-			// Data is being piped
-			bytes, err := io.ReadAll(os.Stdin)
+		payload, err = loadFileEnvelope(filePath)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		var secret string
+		if len(args) > 1 {
+			secret = strings.Join(args[1:], " ")
+		} else {
+			// Read from stdin
+			info, err := os.Stdin.Stat()
 			if err != nil {
-				fmt.Printf("Error reading stdin: %v\n", err)
+				fmt.Printf("Error checking stdin: %v\n", err)
 				os.Exit(1)
 			}
-			secret = string(bytes)
-		} else {
-			// Prompt user
-			fmt.Print("Enter secret: ")
-			reader := bufio.NewReader(os.Stdin)
-			secret, _ = reader.ReadString('\n')
+
+			if (info.Mode() & os.ModeCharDevice) == 0 {
+				// Data is being piped
+				bytes, err := io.ReadAll(os.Stdin)
+				if err != nil {
+					fmt.Printf("Error reading stdin: %v\n", err)
+					os.Exit(1)
+				}
+				secret = string(bytes)
+			} else {
+				// Prompt user
+				fmt.Print("Enter secret: ")
+				reader := bufio.NewReader(os.Stdin)
+				secret, _ = reader.ReadString('\n')
+			}
 		}
-	}
-	secret = strings.TrimSpace(secret)
-	if secret == "" {
-		fmt.Println("Error: Secret message cannot be empty")
-		os.Exit(1)
+		secret = strings.TrimSpace(secret)
+		if secret == "" {
+			fmt.Println("Error: Secret message cannot be empty")
+			os.Exit(1)
+		}
+		payload = []byte(secret)
 	}
 
 	// Create API client
@@ -133,7 +150,7 @@ func runSend(args []string, ttl int64) {
 	}
 
 	// 2. Encrypt Message
-	encrypted, err := crypto.EncryptMessage(secret)
+	encrypted, err := crypto.EncryptBytes(payload)
 	if err != nil {
 		fmt.Printf("Error encrypting message: %v\n", err)
 		os.Exit(1)
