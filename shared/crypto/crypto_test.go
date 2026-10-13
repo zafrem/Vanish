@@ -3,6 +3,7 @@ package crypto
 import (
 	"bytes"
 	"encoding/base64"
+	"strings"
 	"testing"
 )
 
@@ -321,6 +322,45 @@ func TestDecryptBytesWrongIVLengthIsError(t *testing.T) {
 				t.Fatalf("IV length %d: expected an error", n)
 			}
 		}()
+	}
+}
+
+func TestDecodeKey(t *testing.T) {
+	key := make([]byte, 32)
+	for i := range key {
+		key[i] = byte(0xff - i*5) // exercises '/'/'_' and '+'/'-'
+	}
+	cases := []struct {
+		name string
+		in   string
+		ok   bool
+	}{
+		{"url padded", base64.URLEncoding.EncodeToString(key), true},
+		{"url unpadded", base64.RawURLEncoding.EncodeToString(key), true},
+		{"std padded", base64.StdEncoding.EncodeToString(key), true},
+		{"std unpadded", base64.RawStdEncoding.EncodeToString(key), true},
+		{"31 bytes", base64.URLEncoding.EncodeToString(key[:31]), false},
+		{"33 bytes", base64.URLEncoding.EncodeToString(append(append([]byte{}, key...), 1)), false},
+		{"empty", "", false},
+		{"garbage", "not a key!!!", false},
+		{"truncated", base64.RawURLEncoding.EncodeToString(key)[:40], false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got, err := DecodeKey(c.in)
+			if c.ok {
+				if err != nil || !bytes.Equal(got, key) {
+					t.Fatalf("got %x, %v", got, err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatal("expected an error")
+			}
+			if c.in != "" && strings.Contains(err.Error(), c.in) {
+				t.Fatalf("error leaks the key: %v", err)
+			}
+		})
 	}
 }
 

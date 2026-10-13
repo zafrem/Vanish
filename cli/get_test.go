@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -150,6 +151,32 @@ func TestGetDefaultNameCollisionPicksFreeName(t *testing.T) {
 	}
 	if b, _ := os.ReadFile("report.pdf"); string(b) != "old" {
 		t.Fatal("existing file was modified")
+	}
+}
+
+func TestGetBadKeyRefusedBeforeBurn(t *testing.T) {
+	c, link, hits := fakeServer(t, []byte("x"))
+	truncated := link[:len(link)-6]
+	_, err := runGet(c, getOptions{URL: truncated}, &bytes.Buffer{})
+	if err == nil {
+		t.Fatal("a truncated key must fail")
+	}
+	if *hits != 0 {
+		t.Fatal("message must not be fetched (burned) when the key is invalid")
+	}
+	if frag := truncated[strings.Index(truncated, "#")+1:]; strings.Contains(err.Error(), frag) {
+		t.Fatalf("error leaks the key: %v", err)
+	}
+}
+
+func TestGetUnpaddedKeyWorks(t *testing.T) {
+	c, link, _ := fakeServer(t, []byte("my secret"))
+	var stdout bytes.Buffer
+	if _, err := runGet(c, getOptions{URL: strings.TrimRight(link, "=")}, &stdout); err != nil {
+		t.Fatal(err)
+	}
+	if stdout.String() != "my secret" {
+		t.Fatalf("out = %q", stdout.String())
 	}
 }
 

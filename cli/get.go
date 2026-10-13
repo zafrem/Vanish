@@ -79,6 +79,10 @@ func runGet(api *client.Client, opts getOptions, stdout io.Writer) (string, erro
 	if err := checkOutputPath(opts.Out, opts.Force); err != nil {
 		return "", err
 	}
+	// Validate the key before fetching: fetching burns the message.
+	if _, err := crypto.DecodeKey(key); err != nil {
+		return "", err
+	}
 
 	msg, err := api.GetMessage(id)
 	if err != nil {
