@@ -107,6 +107,43 @@ describe('sanitizeFilename (shared cases)', () => {
   });
 });
 
+describe('unpackEnvelope (shared cases)', () => {
+  test('vector has unpack cases', () => {
+    expect(vector.unpack.length).toBeGreaterThan(0);
+  });
+
+  test.each(vector.unpack.map((c) => [c.name, c]))('%s', (_label, c) => {
+    const input = b64(c.input_b64);
+    if (c.kind === 'error') {
+      expect(() => unpackEnvelope(input)).toThrow('Corrupt file: size does not match header');
+      return;
+    }
+    const out = unpackEnvelope(input);
+    if (c.kind === 'text') {
+      expect(out).toEqual({ kind: 'text', text: new TextDecoder().decode(input) });
+      return;
+    }
+    expect(c.kind).toBe('file');
+    expect(out.kind).toBe('file');
+    expect(out.name).toBe(c.file_name);
+    expect(out.type).toBe(c.file_type);
+    expect(Array.from(out.data)).toEqual(Array.from(b64(c.data_b64)));
+  });
+});
+
+describe('packEnvelope header bound', () => {
+  const emptyHeader = '{"name":"","type":"t","size":1}';
+
+  test('rejects a name or type that makes the header exceed 4096 bytes', () => {
+    const one = new Uint8Array([1]);
+    expect(() => packEnvelope('n'.repeat(5000), 't', one)).toThrow('File name or type is too long');
+    expect(() => packEnvelope('a', 't'.repeat(5000), one)).toThrow('File name or type is too long');
+    const fits = 'n'.repeat(4096 - emptyHeader.length);
+    expect(unpackEnvelope(packEnvelope(fits, 't', one)).name).toBe(fits);
+    expect(() => packEnvelope(fits + 'n', 't', one)).toThrow('File name or type is too long');
+  });
+});
+
 describe('Go interoperability (shared vector)', () => {
   test('decrypts and unpacks the file message produced by Go', async () => {
     const key = await importKey(vector.key_url);

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"math"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -23,6 +25,8 @@ var (
 	ErrFileEmpty    = errors.New("file is empty")
 	ErrFileTooLarge = errors.New("file is too large (max 5 MiB)")
 	ErrSizeMismatch = errors.New("corrupt file: size does not match header")
+	// ErrHeaderTooLarge means the file name or type is too long to send.
+	ErrHeaderTooLarge = errors.New("file name or type is too long")
 )
 
 // Kind says whether a decrypted message is plain text or a file.
@@ -42,12 +46,6 @@ type Payload struct {
 	Type string
 	Data []byte
 	Text string
-}
-
-type fileHeader struct {
-	Name *string `json:"name"`
-	Type *string `json:"type"`
-	Size *int    `json:"size"`
 }
 
 type fileHeaderOut struct {
@@ -71,6 +69,10 @@ func PackFile(name, mime string, data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Receivers treat an over-long header as text, so refuse to build one.
+	if len(hdr) > maxHeaderBytes {
+		return nil, ErrHeaderTooLarge
+	}
 	out := make([]byte, 0, len(EnvelopeMagic)+len(hdr)+1+len(data))
 	out = append(out, EnvelopeMagic...)
 	out = append(out, hdr...)
@@ -82,6 +84,15 @@ func PackFile(name, mime string, data []byte) ([]byte, error) {
 // Unpack decodes decrypted plaintext. Anything that is not a well-formed
 // envelope header is treated as plain text. A well-formed header whose size
 // does not match the data is an error.
+//
+// The rules must stay identical to unpackEnvelope in
+// frontend/src/lib/fileEnvelope.js; testdata/vector.json pins them:
+//   - the header (bytes between the magic and the first '\n', at most 4096)
+//     must be valid UTF-8 and a JSON object (a BOM makes it invalid JSON);
+//   - keys match exactly and case-sensitively; a duplicate key's last value wins;
+//   - name and type must be JSON strings;
+//   - size must be a JSON number with an integral value (1.0 and 1e0 count as
+//     1) in [0, MaxFileBytes].
 func Unpack(plain []byte) (*Payload, error) {
 	text := &Payload{Kind: KindText, Text: string(plain)}
 
@@ -89,24 +100,63 @@ func Unpack(plain []byte) (*Payload, error) {
 		return text, nil
 	}
 	rest := plain[len(EnvelopeMagic):]
-	nl := bytes.IndexByte(rest, '\n')
-	if nl < 0 || nl > maxHeaderBytes {
+	window := rest
+	if len(window) > maxHeaderBytes+1 {
+		window = window[:maxHeaderBytes+1]
+	}
+	nl := bytes.IndexByte(window, '\n')
+	if nl < 0 {
+		return text, nil
+	}
+	header := rest[:nl]
+	if !utf8.Valid(header) {
 		return text, nil
 	}
 
-	var h fileHeader
-	if err := json.Unmarshal(rest[:nl], &h); err != nil {
+	// Map decoding is exact-key and last-wins, like JSON.parse.
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(header, &fields); err != nil {
 		return text, nil
 	}
-	if h.Name == nil || h.Type == nil || h.Size == nil || *h.Size < 0 {
+	name, okName := jsonString(fields["name"])
+	mime, okType := jsonString(fields["type"])
+	size, okSize := jsonSize(fields["size"])
+	if !okName || !okType || !okSize {
 		return text, nil
 	}
 
 	data := rest[nl+1:]
-	if len(data) != *h.Size {
+	if len(data) != size {
 		return nil, ErrSizeMismatch
 	}
-	return &Payload{Kind: KindFile, Name: *h.Name, Type: *h.Type, Data: data}, nil
+	return &Payload{Kind: KindFile, Name: name, Type: mime, Data: data}, nil
+}
+
+// jsonString accepts only a JSON string literal (not null).
+func jsonString(raw json.RawMessage) (string, bool) {
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 || raw[0] != '"' {
+		return "", false
+	}
+	var s string
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return "", false
+	}
+	return s, true
+}
+
+// jsonSize accepts only a JSON number whose value is an integer in
+// [0, MaxFileBytes]. It reads the number as float64, as JavaScript does.
+func jsonSize(raw json.RawMessage) (int, bool) {
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 || !(raw[0] == '-' || (raw[0] >= '0' && raw[0] <= '9')) {
+		return 0, false
+	}
+	f, err := strconv.ParseFloat(string(raw), 64)
+	if err != nil || f != math.Trunc(f) || f < 0 || f > MaxFileBytes {
+		return 0, false
+	}
+	return int(f), true
 }
 
 // SanitizeFilename reduces a sender-supplied name to a safe base name.
