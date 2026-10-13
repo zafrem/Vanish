@@ -24,9 +24,8 @@ type MessageHistoryResponse struct {
 	CreatedAt     time.Time     `json:"created_at"`
 	ReadAt        *time.Time    `json:"read_at,omitempty"`
 	ExpiresAt     time.Time     `json:"expires_at"`
-	IsSender      bool          `json:"is_sender"`                    // True if current user is sender
-	IsRecipient   bool          `json:"is_recipient"`                 // True if current user is recipient
-	EncryptionKey string        `json:"encryption_key,omitempty"`     // Only included for recipients with pending messages
+	IsSender      bool          `json:"is_sender"`    // True if current user is sender
+	IsRecipient   bool          `json:"is_recipient"` // True if current user is recipient
 }
 
 // HistoryResponse represents the full history response
