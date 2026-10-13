@@ -144,8 +144,8 @@ export default function CreateMessage() {
         ? await encryptBytes(await packFile(file), key)
         : await encrypt(secretText, key);
 
-      // Step 3: Send encrypted data to server with recipient ID and encryption key
-      const response = await createMessage(ciphertext, iv, parseInt(recipientId), keyString, ttl);
+      // Step 3: Send encrypted data to server with recipient ID (the key never leaves the browser)
+      const response = await createMessage(ciphertext, iv, parseInt(recipientId), ttl);
 
       // Step 4: Generate shareable URL with key in fragment
       const url = generateShareableURL(response.id, keyString);

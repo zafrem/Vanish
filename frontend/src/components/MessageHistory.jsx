@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getHistory } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { generateShareableURL } from '../utils/urlHelpers';
-import { copyToClipboard } from '../lib/clipboard';
 
 export default function MessageHistory() {
   const [history, setHistory] = useState([]);
@@ -73,14 +71,6 @@ export default function MessageHistory() {
     if (diffDays < 7) return `${diffDays}d ago`;
 
     return date.toLocaleDateString();
-  };
-
-  const handleCopyLink = async (messageId, encryptionKey) => {
-    const url = generateShareableURL(messageId, encryptionKey);
-    const result = await copyToClipboard(url);
-    if (!result.success) {
-      setError('Failed to copy link');
-    }
   };
 
   if (loading) {
@@ -196,26 +186,6 @@ export default function MessageHistory() {
                         <p className="text-red-400">Expired without being read</p>
                       )}
                     </div>
-
-                    {/* Show link for received pending messages */}
-                    {item.is_recipient && item.status === 'pending' && item.encryption_key && (
-                      <div className="ml-11 mt-3">
-                        <a
-                          href={generateShareableURL(item.message_id, item.encryption_key)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition"
-                        >
-                          🔓 Open Message
-                        </a>
-                        <button
-                          onClick={() => handleCopyLink(item.message_id, item.encryption_key)}
-                          className="ml-2 inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-lg transition"
-                        >
-                          📋 Copy Link
-                        </button>
-                      </div>
-                    )}
                   </div>
 
                   {/* Right side - Status badge */}
@@ -258,6 +228,7 @@ export default function MessageHistory() {
           <li>• Messages are permanently deleted from Redis after reading</li>
           <li>• Expired messages were never accessed before their TTL</li>
           <li>• History is stored for audit purposes only</li>
+          <li>• Links are never stored - the sender shares the link directly with the recipient</li>
         </ul>
       </div>
     </div>
