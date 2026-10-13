@@ -180,6 +180,7 @@ server {
 
     # Backend API
     location /api/ {
+        client_max_body_size 8m;
         proxy_pass http://backend:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

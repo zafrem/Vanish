@@ -133,6 +133,12 @@ Use the following settings to ensure Vanish can communicate with Okta:
 
 ## 3. Slack Bot Setup
 
+> **Not zero-knowledge:** the Slack `/vanish` command encrypts on the server.
+> The secret typed into Slack reaches the Vanish server in plaintext (and Slack
+> itself), and the server generates the key used for the returned link. The key
+> is not persisted, but treat this path as server-trusted. Use the web app, CLI
+> or Chrome extension when the server must not see the secret.
+
 Enable Slack notifications so users can send secret links directly to a colleague's DM.
 
 ### Step 1: Create the App

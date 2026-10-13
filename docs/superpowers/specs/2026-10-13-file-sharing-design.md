@@ -115,5 +115,5 @@ Update `docs/ARCHITECTURE.md` (envelope format, limits, Redis memory note), `doc
 
 ## Known issues (out of scope, noted)
 
-- `CreateMessage` stores `req.EncryptionKey` in PostgreSQL message metadata "for recipient link generation" (`backend/internal/api/handlers.go:82`). Ciphertext (Redis) plus key (Postgres) lets the server decrypt every message, text or file, which conflicts with the zero-knowledge claim. Should be handled as a separate change.
+- `CreateMessage` stores `req.EncryptionKey` in PostgreSQL message metadata "for recipient link generation" (`backend/internal/api/handlers.go:82`). Ciphertext (Redis) plus key (Postgres) lets the server decrypt every message, text or file, which conflicts with the zero-knowledge claim. Resolved in branch `fix/drop-stored-key`: the key is no longer sent or stored.
 - `mcp/` does not build; handled in sub-project 2, which will build on the file-aware `shared/` API added here.

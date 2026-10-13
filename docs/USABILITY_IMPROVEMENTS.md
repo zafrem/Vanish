@@ -115,7 +115,7 @@ func (h *MessageHandler) CreateMessage(c *gin.Context) {
 +   // Auto-send notification if Slack/Email enabled
 +   go func() {
 +       recipient, _ := h.userRepo.FindByID(ctx, req.RecipientID)
-+       secretURL := fmt.Sprintf("%s/m/%s#%s", baseURL, id, req.EncryptionKey)
++       secretURL := fmt.Sprintf("%s/m/%s#%s", baseURL, id, key) // NOTE: the key is no longer sent by clients; only server-side flows (Slack) have one
 +
 +       if slackEnabled {
 +           slackClient.SendSecretNotification(ctx, recipient.Email, sender.Name, secretURL)

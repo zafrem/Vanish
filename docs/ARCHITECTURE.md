@@ -245,11 +245,17 @@ VNSHFILE1\n
 - The server cannot tell a file from text, and never receives the file name,
   type or content in plaintext (they are encrypted in the client before
   upload). PostgreSQL metadata, notifications and logs carry none of them.
-- Known limitation: the backend currently stores the message's encryption key
-  in its PostgreSQL metadata (`EncryptionKey` in
-  `backend/internal/api/handlers.go`), so an operator with both database and
-  Redis access could decrypt messages, files included. This should be fixed
-  separately so the server is unable to decrypt.
+- The server never receives the decryption key for messages and files created
+  from the web app, the CLI or the Chrome extension: the key exists only in the
+  link's `#fragment`. PostgreSQL holds no key (the legacy
+  `message_metadata.encryption_key` column is dropped at startup, erasing any
+  keys stored by older versions), so History cannot show links; the sender
+  shares the link directly. A legacy client that still sends `encryption_key`
+  has the field ignored.
+- Exception: the Slack `/vanish` flow encrypts on the server. The server
+  receives the plaintext and generates the key in that path (the key is used
+  for the returned link but not persisted), so the Slack flow is NOT
+  zero-knowledge.
 - Limits: 5 MiB per file (enforced by clients), 8 MiB request body (backend
   `BodyLimit`, nginx `client_max_body_size 8m` on `/api/`). Larger bodies get
   `413`.
