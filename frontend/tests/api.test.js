@@ -26,6 +26,14 @@ describe('API Functions', () => {
       const result = await createMessage('ciphertext', 'iv', 2, 86400);
 
       expect(result).toEqual(mockResponse);
+      const sentBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+      expect(sentBody).toEqual({
+        ciphertext: 'ciphertext',
+        iv: 'iv',
+        recipient_id: 2,
+        ttl: 86400,
+      });
+      expect(sentBody).not.toHaveProperty('encryption_key');
       expect(global.fetch).toHaveBeenCalledWith(
         '/api/messages',
         expect.objectContaining({
@@ -63,7 +71,7 @@ describe('API Functions', () => {
 
       localStorage.setItem('token', 'test-token');
 
-      await expect(createMessage('ciphertext', 'iv', 2, 'key')).rejects.toThrow(
+      await expect(createMessage('ciphertext', 'iv', 2, 86400)).rejects.toThrow(
         'Message too large for the server (max 5 MB per file)'
       );
     });

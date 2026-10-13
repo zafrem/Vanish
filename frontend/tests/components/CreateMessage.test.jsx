@@ -201,6 +201,8 @@ describe('CreateMessage Component', () => {
       expect(typeof ciphertext).toBe('string');
       expect(typeof iv).toBe('string');
       expect(recipientId).toBe(7);
+      // (ciphertext, iv, recipientId, ttl): the key is not an argument
+      expect(create.mock.calls[0]).toHaveLength(4);
 
       const sent = JSON.stringify(create.mock.calls[0]);
       expect(sent).not.toContain('secret-name.pdf');
