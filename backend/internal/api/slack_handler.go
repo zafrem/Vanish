@@ -253,13 +253,12 @@ func (h *SlackHandler) handleModalSubmission(c *gin.Context, payload *Interactio
 
 	// Store metadata in PostgreSQL
 	metadata := &models.MessageMetadata{
-		MessageID:     id,
-		SenderID:      sender.ID,
-		RecipientID:   recipient.ID,
-		EncryptionKey: encryptedMsg.Key,
-		Status:        models.StatusPending,
-		CreatedAt:     msg.CreatedAt,
-		ExpiresAt:     expiresAt,
+		MessageID:   id,
+		SenderID:    sender.ID,
+		RecipientID: recipient.ID,
+		Status:      models.StatusPending,
+		CreatedAt:   msg.CreatedAt,
+		ExpiresAt:   expiresAt,
 	}
 
 	if err := h.metadataRepo.Create(ctx, metadata); err != nil {

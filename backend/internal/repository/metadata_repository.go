@@ -22,8 +22,8 @@ func NewMetadataRepository(db *sql.DB) *MetadataRepository {
 // Create creates a new message metadata record
 func (r *MetadataRepository) Create(ctx context.Context, metadata *models.MessageMetadata) error {
 	query := `
-		INSERT INTO message_metadata (message_id, sender_id, recipient_id, encryption_key, status, created_at, expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO message_metadata (message_id, sender_id, recipient_id, status, created_at, expires_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id
 	`
 
@@ -31,7 +31,6 @@ func (r *MetadataRepository) Create(ctx context.Context, metadata *models.Messag
 		metadata.MessageID,
 		metadata.SenderID,
 		metadata.RecipientID,
-		metadata.EncryptionKey,
 		metadata.Status,
 		metadata.CreatedAt,
 		metadata.ExpiresAt,
@@ -110,8 +109,7 @@ func (r *MetadataRepository) GetUserHistory(ctx context.Context, userID int64, l
 			m.read_at,
 			m.expires_at,
 			m.sender_id,
-			m.recipient_id,
-			m.encryption_key
+			m.recipient_id
 		FROM message_metadata m
 		JOIN users sender ON m.sender_id = sender.id
 		JOIN users recipient ON m.recipient_id = recipient.id
@@ -130,7 +128,6 @@ func (r *MetadataRepository) GetUserHistory(ctx context.Context, userID int64, l
 	for rows.Next() {
 		h := &models.MessageHistoryResponse{}
 		var senderID, recipientID int64
-		var encryptionKey sql.NullString
 
 		err := rows.Scan(
 			&h.MessageID,
@@ -142,7 +139,6 @@ func (r *MetadataRepository) GetUserHistory(ctx context.Context, userID int64, l
 			&h.ExpiresAt,
 			&senderID,
 			&recipientID,
-			&encryptionKey,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan history: %w", err)
@@ -150,11 +146,6 @@ func (r *MetadataRepository) GetUserHistory(ctx context.Context, userID int64, l
 
 		h.IsSender = senderID == userID
 		h.IsRecipient = recipientID == userID
-
-		// Only include encryption key for recipients with pending messages
-		if h.IsRecipient && h.Status == models.StatusPending && encryptionKey.Valid {
-			h.EncryptionKey = encryptionKey.String
-		}
 
 		history = append(history, h)
 	}

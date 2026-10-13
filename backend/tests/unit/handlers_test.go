@@ -197,5 +197,49 @@ func TestCreateMessage_InvalidTTL(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
+// The key is never sent to the server. Requests without encryption_key must pass
+// request binding, and legacy clients that still send it must keep working
+// (the unknown field is ignored). An invalid TTL is used so the handler stops
+// right after binding, with a TTL error rather than a binding error.
+func TestCreateMessage_EncryptionKeyIgnored(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	bodies := map[string]string{
+		"without key":       `{"ciphertext":"dGVzdC1jaXBoZXJ0ZXh0","iv":"dGVzdC1pdg==","recipient_id":2,"ttl":100}`,
+		"legacy client key": `{"ciphertext":"dGVzdC1jaXBoZXJ0ZXh0","iv":"dGVzdC1pdg==","recipient_id":2,"ttl":100,"encryption_key":"abc"}`,
+	}
+
+	for name, body := range bodies {
+		t.Run(name, func(t *testing.T) {
+			handler := api.NewMessageHandler(&mockStorage{}, nil)
+			router := gin.New()
+			router.Use(func(c *gin.Context) {
+				c.Set("user_id", int64(1))
+				c.Next()
+			})
+			router.POST("/messages", handler.CreateMessage)
+
+			req, _ := http.NewRequest("POST", "/messages", bytes.NewBufferString(body))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusBadRequest, w.Code)
+			assert.NotContains(t, w.Body.String(), "Invalid request")
+		})
+	}
+}
+
+func TestCreateMessageRequest_HasNoKeyField(t *testing.T) {
+	var req models.CreateMessageRequest
+	err := json.Unmarshal([]byte(`{"ciphertext":"a","iv":"b","recipient_id":2,"encryption_key":"secret"}`), &req)
+	require.NoError(t, err)
+
+	out, err := json.Marshal(req)
+	require.NoError(t, err)
+	assert.NotContains(t, string(out), "secret")
+	assert.NotContains(t, string(out), "encryption_key")
+}
+
 // TestGetMessage tests would require a real or mocked MetadataRepository
 // Skipping these tests to avoid complexity with concrete repository types

@@ -23,11 +23,12 @@ type Message struct {
 
 // CreateMessageRequest represents the request body for creating a message
 type CreateMessageRequest struct {
-	Ciphertext    string `json:"ciphertext" binding:"required,base64"`
-	IV            string `json:"iv" binding:"required,base64"`
-	TTL           *int64 `json:"ttl,omitempty"`                       // in seconds, optional
-	RecipientID   int64  `json:"recipient_id" binding:"required"`     // Who can read this message
-	EncryptionKey string `json:"encryption_key" binding:"required"`   // Client-side encryption key for recipient access
+	Ciphertext  string `json:"ciphertext" binding:"required,base64"`
+	IV          string `json:"iv" binding:"required,base64"`
+	TTL         *int64 `json:"ttl,omitempty"`                   // in seconds, optional
+	RecipientID int64  `json:"recipient_id" binding:"required"` // Who can read this message
+	// The decryption key is never sent to the server. Legacy clients that still
+	// include an "encryption_key" field have it silently ignored (not bound).
 }
 
 // CreateMessageResponse represents the response after creating a message
