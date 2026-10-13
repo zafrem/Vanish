@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import CreateMessage from '../../src/components/CreateMessage';
 import * as api from '../../src/lib/api';
+import * as cryptoLib from '../../src/lib/crypto';
 import { AuthProvider } from '../../src/context/AuthContext';
 
 // Mock the API
@@ -161,6 +162,57 @@ describe('CreateMessage Component', () => {
       expect(screen.getByText(/too large \(max 5 MB\)/i)).toBeInTheDocument();
     });
     expect(screen.getByRole('button', { name: /Create Secret Link/i })).toBeDisabled();
+  });
+
+  // The recipient selector is a search input with a dropdown, not a <select>.
+  const selectRecipient = async (name) => {
+    const input = await screen.findByPlaceholderText(/Search by name or email/i);
+    fireEvent.focus(input);
+    fireEvent.click(await screen.findByText(name));
+    await waitFor(() => expect(input.value).toMatch(name));
+  };
+
+  test('sends a file: only ciphertext reaches the API and the plaintext is an envelope', async () => {
+    api.getUsers.mockResolvedValue([
+      { id: 'user-1', name: 'Me', email: 'test@example.com' },
+      { id: 7, name: 'Recipient Seven', email: 'seven@example.com' },
+    ]);
+    const create = vi.spyOn(api, 'createMessage').mockResolvedValue({
+      id: 'file-msg-1',
+      expiresAt: '2025-12-26T10:00:00Z',
+    });
+    const encryptSpy = vi.spyOn(cryptoLib, 'encryptBytes'); // calls through
+    try {
+      renderComponent();
+      await selectRecipient('Recipient Seven');
+
+      fireEvent.click(screen.getByRole('button', { name: /^File$/ }));
+      const file = new File([new Uint8Array([1, 2, 3])], 'secret-name.pdf', { type: 'application/pdf' });
+      // jsdom's File lacks arrayBuffer(); browsers have it.
+      file.arrayBuffer = async () => new Uint8Array([1, 2, 3]).buffer;
+      fireEvent.change(screen.getByLabelText(/choose a file/i), { target: { files: [file] } });
+      expect(await screen.findByText(/secret-name\.pdf/)).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /Create Secret Link/i }));
+
+      expect(await screen.findByText(/Secret Created!/i)).toBeInTheDocument();
+      expect(create).toHaveBeenCalledTimes(1);
+      const [ciphertext, iv, recipientId] = create.mock.calls[0];
+      expect(typeof ciphertext).toBe('string');
+      expect(typeof iv).toBe('string');
+      expect(recipientId).toBe(7);
+
+      const sent = JSON.stringify(create.mock.calls[0]);
+      expect(sent).not.toContain('secret-name.pdf');
+      expect(sent).not.toContain('AQID'); // base64 of the raw bytes [1,2,3]
+
+      expect(encryptSpy).toHaveBeenCalledTimes(1);
+      const plaintext = encryptSpy.mock.calls[0][0];
+      expect(new TextDecoder().decode(plaintext.subarray(0, 10))).toBe('VNSHFILE1\n');
+    } finally {
+      create.mockRestore();
+      encryptSpy.mockRestore();
+    }
   });
 
   test('shows the selected file name and size, and can remove it', async () => {
