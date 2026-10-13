@@ -43,7 +43,7 @@ VNSHFILE1\n
 
 ### Filename handling (both JS and Go)
 
-`SanitizeFilename(name)`: take the base name after the last `/` or `\`; remove control characters (< 0x20, 0x7F) and `:*?"<>|`; trim leading/trailing spaces and dots; cap at 255 bytes without splitting a UTF-8 sequence; if the result is empty use `vanish-file`. The sanitized name is used for every write/download. The raw name is never used.
+`SanitizeFilename(name)`: take the base name after the last `/` or `\`; remove C0 control characters (< 0x20), DEL (0x7F), C1 control characters (U+0080–U+009F), U+FFFD (and, in JS, lone surrogates), the bidi marks and embedding/override/isolate characters U+200E, U+200F, U+202A–U+202E and U+2066–U+2069 (they can disguise an extension, e.g. `a<U+202E>fdp.exe`), and `:*?"<>|`; trim leading/trailing spaces and dots; cap at 255 bytes without splitting a UTF-8 sequence; if the result is empty use `vanish-file`. The sanitized name is used for every write/download. The raw name is never used.
 
 ## Limits
 

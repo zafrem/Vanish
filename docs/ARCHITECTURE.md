@@ -254,8 +254,9 @@ VNSHFILE1\n
   `BodyLimit`, nginx `client_max_body_size 8m` on `/api/`). Larger bodies get
   `413`.
 - On receipt, plaintext starting with the magic and a valid header is a file;
-  anything else is text. File names are sanitized (base name only, no control
-  characters or `:*?"<>|`, <= 255 bytes) before any write or download.
+  anything else is text. File names are sanitized (base name only, no C0/C1
+  control characters, bidi override/isolate marks or `:*?"<>|`, <= 255 bytes)
+  before any write or download.
 - Redis holds the ciphertext (up to ~7 MB per file message) until it is read
   or its TTL expires; there is no per-user cap on pending file messages.
 - `shared/crypto/envelope.go` and `frontend/src/lib/fileEnvelope.js` must stay

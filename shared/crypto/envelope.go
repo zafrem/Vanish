@@ -159,6 +159,22 @@ func jsonSize(raw json.RawMessage) (int, bool) {
 	return int(f), true
 }
 
+// dropFilenameRune reports whether r is removed from file names: C0 and C1
+// controls, DEL, U+FFFD (also what invalid UTF-8 decodes to), bidi marks and
+// embeddings/overrides/isolates (which can disguise an extension, e.g.
+// "a<RLO>fdp.exe"), and characters Windows forbids.
+func dropFilenameRune(r rune) bool {
+	switch {
+	case r < 0x20, r == 0x7f, r >= 0x80 && r <= 0x9f:
+		return true
+	case r == utf8.RuneError:
+		return true
+	case r == 0x200e, r == 0x200f, r >= 0x202a && r <= 0x202e, r >= 0x2066 && r <= 0x2069:
+		return true
+	}
+	return strings.ContainsRune(`:*?"<>|`, r)
+}
+
 // SanitizeFilename reduces a sender-supplied name to a safe base name.
 // Identical rules exist in frontend/src/lib/fileEnvelope.js.
 func SanitizeFilename(name string) string {
@@ -168,7 +184,7 @@ func SanitizeFilename(name string) string {
 
 	var b strings.Builder
 	for _, r := range name {
-		if r < 0x20 || r == 0x7f || r == utf8.RuneError || strings.ContainsRune(`:*?"<>|`, r) {
+		if dropFilenameRune(r) {
 			continue
 		}
 		b.WriteRune(r)
