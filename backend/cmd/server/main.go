@@ -130,11 +130,13 @@ func main() {
 
 	// Create HTTP server
 	addr := cfg.Address()
+	// WriteTimeout is long because GET burns the message before writing a
+	// response of up to ~7 MB; a short timeout would truncate it after the burn.
 	server := &http.Server{
 		Addr:           addr,
 		Handler:        router,
 		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
+		WriteTimeout:   60 * time.Second,
 		MaxHeaderBytes: 1 << 20, // 1 MB
 	}
 

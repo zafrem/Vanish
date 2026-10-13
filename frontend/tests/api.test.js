@@ -51,6 +51,22 @@ describe('API Functions', () => {
 
       await expect(createMessage('ciphertext', 'iv', 2, 86400)).rejects.toThrow('Bad request');
     });
+
+    test('maps 413 (e.g. nginx HTML body) to a size message', async () => {
+      global.fetch = vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          status: 413,
+          json: () => Promise.reject(new Error('x')),
+        })
+      );
+
+      localStorage.setItem('token', 'test-token');
+
+      await expect(createMessage('ciphertext', 'iv', 2, 'key')).rejects.toThrow(
+        'Message too large for the server (max 5 MB per file)'
+      );
+    });
   });
 
   describe('getMessage', () => {

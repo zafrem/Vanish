@@ -73,7 +73,7 @@ func SetupRouter(
 			// Message endpoints (all now require auth)
 			messages := protected.Group("/messages")
 			{
-				messages.POST("", messageHandler.CreateMessage)
+				messages.POST("", BodyLimit(MaxMessageBodyBytes), messageHandler.CreateMessage)
 				messages.GET("/:id", messageHandler.GetMessage)
 				messages.HEAD("/:id", messageHandler.CheckMessage)
 			}
