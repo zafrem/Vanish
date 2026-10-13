@@ -40,6 +40,12 @@ func (h *MessageHandler) CreateMessage(c *gin.Context) {
 	var req models.CreateMessageRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
+		if IsBodyTooLarge(err) {
+			c.JSON(http.StatusRequestEntityTooLarge, models.ErrorResponse{
+				Error: "Message too large",
+			})
+			return
+		}
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error: "Invalid request: " + err.Error(),
 		})

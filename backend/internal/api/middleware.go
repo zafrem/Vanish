@@ -1,11 +1,14 @@
 package api
 
 import (
+	"errors"
 	"io"
+	"net/http"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/milkiss/vanish/backend/internal/models"
 )
 
 // NoBodyLoggingMiddleware prevents request bodies from being logged
@@ -107,4 +110,30 @@ func customLogger() gin.HandlerFunc {
 		_ = method
 		_ = path
 	}
+}
+
+// MaxMessageBodyBytes caps the create-message request body. A 5 MiB file
+// becomes ~7 MB after AES-GCM and base64, so 8 MiB leaves headroom.
+const MaxMessageBodyBytes = 8 << 20
+
+// BodyLimit rejects requests whose body exceeds max bytes. It checks the
+// declared Content-Length up front and also caps bodies of unknown length.
+// It never reads or logs the body.
+func BodyLimit(max int64) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Request.ContentLength > max {
+			c.AbortWithStatusJSON(http.StatusRequestEntityTooLarge, models.ErrorResponse{
+				Error: "Message too large",
+			})
+			return
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, max)
+		c.Next()
+	}
+}
+
+// IsBodyTooLarge reports whether err came from exceeding a BodyLimit.
+func IsBodyTooLarge(err error) bool {
+	var tooLarge *http.MaxBytesError
+	return errors.As(err, &tooLarge)
 }
