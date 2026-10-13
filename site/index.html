@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vanish — secrets that vanish after one read</title>
+  <meta name="description" content="Vanish is an ephemeral secret-sharing platform. Secrets are encrypted in your browser, stored briefly, and destroyed the moment they are read.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="canonical" href="https://vanish.codeforlife.dev/">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Vanish — secrets that vanish after one read">
+  <meta property="og:description" content="Share passwords, API keys and certificates without leaving a trail. Encrypted in your browser, destroyed on first read.">
+  <meta property="og:url" content="https://vanish.codeforlife.dev/">
+  <meta property="og:image" content="https://vanish.codeforlife.dev/assets/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="styles.css">
+  <script src="main.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap bar">
+      <a class="brand" href="#top" aria-label="Vanish home">
+        <img src="assets/logo.png" alt="" aria-hidden="true" width="32" height="32">
+        <span>Vanish</span>
+      </a>
+      <nav aria-label="Primary">
+        <a href="#how">How it works</a>
+        <a href="#features">Features</a>
+        <a href="#start">Quick start</a>
+        <a class="btn btn-small" href="https://github.com/zafrem/Vanish">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section id="top" class="hero">
+      <div class="wrap">
+        <img class="hero-logo" src="assets/logo.png" alt="Vanish logo" width="128" height="128">
+        <h1>Share secrets that <span class="grad">vanish</span> after one read</h1>
+        <p class="lead">Vanish is an ephemeral messaging platform for single-use information transfer: passwords, API keys, certificates. Encrypted in your browser, stored briefly, destroyed the moment they are read.</p>
+        <p class="cta">
+          <a class="btn" href="#start">Quick start</a>
+          <a class="btn btn-ghost" href="https://github.com/zafrem/Vanish">View on GitHub</a>
+        </p>
+      </div>
+    </section>
+
+    <section id="why" class="band">
+      <div class="wrap narrow">
+        <h2>Why it exists</h2>
+        <blockquote>
+          <p>One day, someone sent me a token over a messenger app, and I completely forgot about it. When I stumbled upon it later and used it, it hit me: this is sensitive data, and it had been sitting in a chat. I wanted a way to transfer secrets without prying eyes.</p>
+        </blockquote>
+        <p>Secrets pasted into chat or email stay there for years. Vanish gives them a lifetime of one read.</p>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="wrap">
+        <h2>How it works</h2>
+        <svg class="diagram" viewBox="0 0 720 200" role="img" aria-labelledby="diagram-title diagram-desc">
+          <title id="diagram-title">How a Vanish message travels</title>
+          <desc id="diagram-desc">The sender's browser encrypts the secret, the Vanish server stores only the ciphertext with an expiry time, and the recipient's browser decrypts it. The server deletes the message on first read.</desc>
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" class="arrowhead"/>
+            </marker>
+          </defs>
+          <g class="node">
+            <rect x="10" y="50" width="190" height="100" rx="12"/>
+            <text x="105" y="92" text-anchor="middle" class="t-head">Sender's browser</text>
+            <text x="105" y="118" text-anchor="middle" class="t-sub">encrypts with AES-256-GCM</text>
+          </g>
+          <g class="node">
+            <rect x="265" y="50" width="190" height="100" rx="12"/>
+            <text x="360" y="92" text-anchor="middle" class="t-head">Vanish server</text>
+            <text x="360" y="118" text-anchor="middle" class="t-sub">holds ciphertext + expiry</text>
+          </g>
+          <g class="node">
+            <rect x="520" y="50" width="190" height="100" rx="12"/>
+            <text x="615" y="92" text-anchor="middle" class="t-head">Recipient's browser</text>
+            <text x="615" y="118" text-anchor="middle" class="t-sub">decrypts, then it's gone</text>
+          </g>
+          <line x1="200" y1="100" x2="263" y2="100" class="edge" marker-end="url(#arrow)"/>
+          <line x1="455" y1="100" x2="518" y2="100" class="edge" marker-end="url(#arrow)"/>
+          <text x="232" y="86" text-anchor="middle" class="t-edge">1</text>
+          <text x="487" y="86" text-anchor="middle" class="t-edge">2</text>
+        </svg>
+        <ol class="steps">
+          <li><strong>Encrypt.</strong> Your secret is encrypted in your browser with AES-256-GCM before it is sent.</li>
+          <li><strong>Store briefly.</strong> The server keeps the encrypted message in memory (Redis) with a time-to-live from 1 hour to 7 days.</li>
+          <li><strong>Share a link.</strong> The decryption key is placed in the link's <code>#fragment</code>, the part of a URL that browsers don't include in HTTP requests.</li>
+          <li><strong>Burn on read.</strong> The first read returns the message and deletes it in one atomic step. Opening the link again finds nothing.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="features" class="band">
+      <div class="wrap">
+        <h2>Features</h2>
+        <ul class="cards">
+          <li><h3>Encrypted before it leaves your browser</h3><p>AES-256-GCM through the Web Crypto API. Plaintext is not stored or logged.</p></li>
+          <li><h3>Burn on read</h3><p>A message can be read exactly once, then it is permanently destroyed.</p></li>
+          <li><h3>Truly ephemeral</h3><p>Messages live in Redis memory with a TTL you choose, from 1 hour to 7 days.</p></li>
+          <li><h3>Clipboard protection</h3><p>Retrieved secrets go straight to your clipboard instead of being displayed on the page.</p></li>
+          <li><h3>Built for teams</h3><p>Messages are addressed to a specific recipient, with Okta sign-in and Slack or email notifications.</p></li>
+          <li><h3>Open source</h3><p>Read the code, run it yourself with Docker, and adapt it to your environment.</p></li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="screens">
+      <div class="wrap">
+        <h2>See it in action</h2>
+        <div class="shots">
+          <figure><img src="assets/shot-inbox.jpg" alt="The Vanish page for writing a secret, choosing a recipient and an expiry time" width="1200" height="621" loading="lazy"><figcaption>Write a secret, pick a recipient and an expiry.</figcaption></figure>
+          <figure><img src="assets/shot-send.jpg" alt="The confirmation screen after a secret is created, with a button to copy the one-time link" width="1200" height="599" loading="lazy"><figcaption>Share the one-time link.</figcaption></figure>
+          <figure><img src="assets/shot-link.jpg" alt="The page where a recipient reveals a secret, with a warning that it will be destroyed after reading" width="1200" height="626" loading="lazy"><figcaption>The recipient reveals it once, straight to the clipboard.</figcaption></figure>
+          <figure><img src="assets/shot-history.jpg" alt="The message history view listing sent and received messages without their contents" width="1200" height="596" loading="lazy"><figcaption>History shows who and when, never the contents.</figcaption></figure>
+        </div>
+      </div>
+    </section>
+
+    <section id="everywhere" class="band">
+      <div class="wrap">
+        <h2>Where you work</h2>
+        <ul class="cards">
+          <li><h3>Web app</h3><p>A React single-page app for creating and opening secrets.</p></li>
+          <li><h3>Command line</h3><p><code>vanish send</code> pipes secrets from scripts and terminals.</p></li>
+          <li><h3>Chrome extension</h3><p>Send secrets without leaving the page you're on.</p></li>
+          <li><h3>Integrations</h3><p>Okta, Slack, email and Vault, each optional and off by default.</p></li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="start">
+      <div class="wrap narrow">
+        <h2>Quick start</h2>
+        <p>You need Docker and Docker Compose. Clone the repository, then start the whole stack:</p>
+        <div class="code">
+          <pre><code id="cmd-start">./start.sh docker</code></pre>
+          <button class="copy" type="button" data-copy-target="cmd-start" hidden>Copy</button>
+        </div>
+        <p>Or use Docker Compose directly:</p>
+        <div class="code">
+          <pre><code id="cmd-compose">docker-compose up -d</code></pre>
+          <button class="copy" type="button" data-copy-target="cmd-compose" hidden>Copy</button>
+        </div>
+        <p>Then open <code>http://localhost:3000</code>. For local development, <code>./start.sh dev</code> runs the Go backend and Vite frontend with hot reload. See the <a href="https://github.com/zafrem/Vanish/tree/main/docs">documentation</a> for configuration and deployment.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>
+        <a href="https://github.com/zafrem/Vanish">GitHub</a> ·
+        <a href="https://github.com/zafrem/Vanish/tree/main/docs">Docs</a> ·
+        <a href="https://github.com/zafrem/Vanish/blob/main/LICENSE">License</a> ·
+        <a href="https://hub.docker.com/r/zafrem/vanish">Docker image</a>
+      </p>
+      <p class="muted">This site sets no cookies and makes no third-party requests.</p>
+    </div>
+  </footer>
+</body>
+</html>
