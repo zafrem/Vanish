@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"bytes"
 	"encoding/base64"
 	"testing"
 )
@@ -261,6 +262,45 @@ func BenchmarkDecryptMessage(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
+	}
+}
+
+func TestEncryptDecryptBytesRoundTrip(t *testing.T) {
+	plain := []byte{0x00, 0x01, 0xff, '\n', 0x00, 0xde, 0xad, 0xbe, 0xef}
+
+	enc, err := EncryptBytes(plain)
+	if err != nil {
+		t.Fatalf("EncryptBytes: %v", err)
+	}
+	got, err := DecryptBytes(enc.Ciphertext, enc.IV, enc.Key)
+	if err != nil {
+		t.Fatalf("DecryptBytes: %v", err)
+	}
+	if !bytes.Equal(got, plain) {
+		t.Fatalf("round trip mismatch: got %x want %x", got, plain)
+	}
+}
+
+func TestDecryptBytesWrongKeyFails(t *testing.T) {
+	a, _ := EncryptBytes([]byte("secret"))
+	b, _ := EncryptBytes([]byte("other"))
+	if _, err := DecryptBytes(a.Ciphertext, a.IV, b.Key); err == nil {
+		t.Fatal("expected error decrypting with the wrong key")
+	}
+}
+
+func TestTextWrappersMatchBytes(t *testing.T) {
+	enc, err := EncryptMessage("héllo 🔒")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := DecryptBytes(enc.Ciphertext, enc.IV, enc.Key)
+	if err != nil || string(b) != "héllo 🔒" {
+		t.Fatalf("bytes decrypt of text message: %q, %v", b, err)
+	}
+	s, err := DecryptMessage(enc.Ciphertext, enc.IV, enc.Key)
+	if err != nil || s != "héllo 🔒" {
+		t.Fatalf("DecryptMessage: %q, %v", s, err)
 	}
 }
 
