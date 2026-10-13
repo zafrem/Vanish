@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -86,5 +87,34 @@ func TestParseInterspersed(t *testing.T) {
 	got, _ = parseInterspersed(fs, []string{"user@x.com", "my", "secret"}, true)
 	if !reflect.DeepEqual(got, []string{"user@x.com", "my", "secret"}) {
 		t.Fatalf("plain message: got %v", got)
+	}
+}
+
+func TestParseInterspersedMessageLooksLikeFlag(t *testing.T) {
+	newFS := func() (*flag.FlagSet, *string, *int64) {
+		fs := flag.NewFlagSet("t", flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		file := fs.String("file", "", "")
+		ttl := fs.Int64("ttl", 0, "")
+		return fs, file, ttl
+	}
+
+	cases := [][]string{
+		{"user@x.com", "-hunter2"},
+		{"user@x.com", "-----BEGIN KEY-----", "line"},
+		{"user@x.com", "hello", "world"},
+	}
+	for _, args := range cases {
+		fs, _, _ := newFS()
+		got, err := parseInterspersed(fs, args, true)
+		if err != nil || !reflect.DeepEqual(got, args) {
+			t.Fatalf("args %v: got %v, err %v", args, got, err)
+		}
+	}
+
+	fs, file, ttl := newFS()
+	got, err := parseInterspersed(fs, []string{"user@x.com", "-file", "a.bin", "-ttl", "60"}, true)
+	if err != nil || *file != "a.bin" || *ttl != 60 || !reflect.DeepEqual(got, []string{"user@x.com"}) {
+		t.Fatalf("known flags after email: got %v %q %d %v", got, *file, *ttl, err)
 	}
 }
