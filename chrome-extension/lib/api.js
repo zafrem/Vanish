@@ -10,16 +10,16 @@
  * @param {string} ciphertext - Base64-encoded encrypted data
  * @param {string} iv - Base64-encoded initialization vector
  * @param {number} recipientId - ID of the intended recipient
- * @param {string} encryptionKey - Client-side encryption key for recipient access
  * @param {number} ttl - Time to live in seconds (optional)
  * @returns {Promise<{id: string, expiresAt: string}>}
+ *
+ * The decryption key is never sent to the server; it lives only in the link fragment.
  */
-export async function createMessage(token, apiBase, ciphertext, iv, recipientId, encryptionKey, ttl = 86400) {
+export async function createMessage(token, apiBase, ciphertext, iv, recipientId, ttl = 86400) {
   const payload = {
     ciphertext,
     iv,
     recipient_id: recipientId,
-    encryption_key: encryptionKey,
     ttl
   };
 
