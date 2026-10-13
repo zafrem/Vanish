@@ -21,6 +21,10 @@ func main() {
 	ttl := sendCmd.Int64("ttl", 86400, "Time to live in seconds (default 24h)")
 	filePath := sendCmd.String("file", "", "Send this file (max 5 MiB) instead of a text message")
 
+	getCmd := flag.NewFlagSet("get", flag.ExitOnError)
+	getOut := getCmd.String("o", "", "Write a received file to this path")
+	getForce := getCmd.Bool("force", false, "Overwrite the output file if it exists")
+
 	if len(os.Args) < 2 {
 		printHelp()
 		os.Exit(1)
@@ -33,6 +37,9 @@ func main() {
 	case "send":
 		args, _ := parseInterspersed(sendCmd, os.Args[2:], true)
 		runSend(args, *ttl, *filePath)
+	case "get":
+		args, _ := parseInterspersed(getCmd, os.Args[2:], false)
+		runGetCommand(args, *getOut, *getForce)
 	default:
 		printHelp()
 		os.Exit(1)
@@ -46,6 +53,8 @@ func printHelp() {
 	fmt.Println("  vanish config                         Configure the CLI (interactive)")
 	fmt.Println("  vanish send <email> [msg]             Send a secret to a user")
 	fmt.Println("  vanish send <email> -file <path>      Send a file (max 5 MiB)")
+	fmt.Println("  vanish get <link>                     Read a secret (text to stdout, files saved)")
+	fmt.Println("  vanish get -o <path> [-force] <link>  Save a received file to <path>")
 	fmt.Println()
 	fmt.Println("Flags for send:")
 	fmt.Println("  -ttl <seconds>                        Expiration time (default 86400)")
@@ -172,5 +181,26 @@ func runSend(args []string, ttl int64, filePath string) {
 		fmt.Printf("Could not auto-send Slack notification: %v\n", err)
 	} else {
 		fmt.Println("✓ Notification sent via Slack")
+	}
+}
+
+func runGetCommand(args []string, out string, force bool) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error loading config: %v\nRun 'vanish config' first.\n", err)
+		os.Exit(1)
+	}
+	if len(args) != 1 {
+		fmt.Fprintln(os.Stderr, "Usage: vanish get [-o path] [-force] <link>")
+		os.Exit(1)
+	}
+
+	saved, err := runGet(client.NewClient(cfg), getOptions{URL: args[0], Out: out, Force: force}, os.Stdout)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	if saved != "" {
+		fmt.Fprintf(os.Stderr, "✓ Saved %s (the message has been destroyed)\n", saved)
 	}
 }
