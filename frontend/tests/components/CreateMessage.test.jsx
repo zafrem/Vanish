@@ -132,4 +132,51 @@ describe('CreateMessage Component', () => {
     expect(callArgs[0]).not.toBe('my secret password');
     expect(callArgs[0]).toBeDefined(); // Should be ciphertext
   });
+
+  test('can switch to file mode, which hides the textarea and needs a file', async () => {
+    renderComponent();
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/Enter password, API key, or sensitive data/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /^File$/ }));
+
+    expect(screen.queryByPlaceholderText(/Enter password, API key, or sensitive data/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/choose a file/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Create Secret Link/i })).toBeDisabled();
+  });
+
+  test('rejects an oversized file with a clear error', async () => {
+    renderComponent();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^File$/ })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^File$/ }));
+
+    const input = screen.getByLabelText(/choose a file/i);
+    const big = new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'big.bin');
+    fireEvent.change(input, { target: { files: [big] } });
+
+    await waitFor(() => {
+      expect(screen.getByText(/too large \(max 5 MB\)/i)).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /Create Secret Link/i })).toBeDisabled();
+  });
+
+  test('shows the selected file name and size, and can remove it', async () => {
+    renderComponent();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^File$/ })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^File$/ }));
+
+    const input = screen.getByLabelText(/choose a file/i);
+    fireEvent.change(input, { target: { files: [new File([new Uint8Array(2048)], 'notes.txt')] } });
+
+    expect(await screen.findByText(/notes\.txt/)).toBeInTheDocument();
+    expect(screen.getByText(/2\.0 KB/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /remove file/i }));
+    expect(screen.queryByText(/notes\.txt/)).not.toBeInTheDocument();
+  });
 });
