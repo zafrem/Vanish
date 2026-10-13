@@ -1,0 +1,42 @@
+name: Deploy site to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'scripts/check_site.py'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check site rules
+        run: |
+          python3 -I -m unittest discover -s scripts -p 'test_check_site.py'
+          python3 scripts/check_site.py site
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
