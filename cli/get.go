@@ -76,11 +76,11 @@ func runGet(api *client.Client, opts getOptions, stdout io.Writer) (string, erro
 	if err != nil {
 		return "", err
 	}
-	if err := checkOutputPath(opts.Out, opts.Force); err != nil {
+	if err = checkOutputPath(opts.Out, opts.Force); err != nil {
 		return "", err
 	}
 	// Validate the key before fetching: fetching burns the message.
-	if _, err := crypto.DecodeKey(key); err != nil {
+	if _, err = crypto.DecodeKey(key); err != nil {
 		return "", err
 	}
 

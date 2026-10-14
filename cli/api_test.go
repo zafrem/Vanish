@@ -17,11 +17,11 @@ func TestFindUserID(t *testing.T) {
 	tests := []struct {
 		name        string
 		email       string
+		errContains string
 		users       []models.User
 		wantID      int64
-		wantErr     bool
 		statusCode  int
-		errContains string
+		wantErr     bool
 	}{
 		{
 			name:  "user found",
@@ -127,12 +127,12 @@ func TestSendToAPI(t *testing.T) {
 	}
 
 	tests := []struct {
+		wantResponse *models.CreateMessageResponse
 		name         string
 		recipientID  int64
 		ttl          int64
 		statusCode   int
 		wantErr      bool
-		wantResponse *models.CreateMessageResponse
 	}{
 		{
 			name:        "successful send",
@@ -214,8 +214,8 @@ func TestSendToAPI(t *testing.T) {
 func TestSendSlackNotification(t *testing.T) {
 	tests := []struct {
 		name        string
-		recipientID int64
 		messageURL  string
+		recipientID int64
 		statusCode  int
 		wantErr     bool
 	}{
