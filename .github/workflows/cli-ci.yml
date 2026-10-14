@@ -44,7 +44,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        go-version: ['1.22', '1.23']
+        # cli/go.mod requires go >= 1.23.4, so 1.22 cannot build it
+        go-version: ['1.23']
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
