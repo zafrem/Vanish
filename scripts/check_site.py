@@ -7,7 +7,7 @@ from html.parser import HTMLParser
 
 CNAME = "vanish.codeforlife.dev"
 MAX_BYTES = 1_500_000
-EXTERNAL_LINK_HOSTS = {"github.com", "hub.docker.com"}
+EXTERNAL_LINK_HOSTS = {"github.com", "hub.docker.com", "buymeacoffee.com"}
 BANNED_PHRASES = [
     "server can never",
     "cannot decrypt",

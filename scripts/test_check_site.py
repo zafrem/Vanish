@@ -58,6 +58,12 @@ class CheckSiteTest(unittest.TestCase):
         bad = GOOD_HTML.replace("</body>", '<a href="https://evil.example/">x</a></body>')
         self.assertTrue(any("external link" in p for p in check(make_site(index=bad))))
 
+    def test_buymeacoffee_link_allowed_but_remote_badge_image_rejected(self):
+        link = GOOD_HTML.replace("</body>", '<a href="https://buymeacoffee.com/zafrem">c</a></body>')
+        self.assertEqual(check(make_site(index=link)), [])
+        remote = GOOD_HTML.replace("</body>", '<img src="https://img.shields.io/badge/x" alt="b"></body>')
+        self.assertTrue(any("third-party" in p for p in check(make_site(index=remote))))
+
     def test_missing_local_file_rejected(self):
         bad = GOOD_HTML.replace("assets/a.png", "assets/missing.png")
         self.assertTrue(any("missing.png" in p for p in check(make_site(index=bad))))
