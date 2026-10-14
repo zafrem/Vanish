@@ -62,6 +62,8 @@ jobs:
 
       - name: Run tests
         working-directory: ./cli
+        # bash everywhere: PowerShell splits -coverprofile=coverage.out at the dot
+        shell: bash
         run: go test -v -race -coverprofile=coverage.out ./...
 
       - name: Upload coverage to Codecov

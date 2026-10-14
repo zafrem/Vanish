@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -32,13 +33,24 @@ func main() {
 
 	switch os.Args[1] {
 	case "config":
-		configCmd.Parse(os.Args[2:])
+		if err := configCmd.Parse(os.Args[2:]); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(2)
+		}
 		runConfig()
 	case "send":
-		args, _ := parseInterspersed(sendCmd, os.Args[2:], true)
+		args, err := parseInterspersed(sendCmd, os.Args[2:], true)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(2)
+		}
 		runSend(args, *ttl, *filePath)
 	case "get":
-		args, _ := parseInterspersed(getCmd, os.Args[2:], false)
+		args, err := parseInterspersed(getCmd, os.Args[2:], false)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(2)
+		}
 		runGetCommand(args, *getOut, *getForce)
 	default:
 		printHelp()
@@ -61,18 +73,36 @@ func printHelp() {
 	fmt.Println("  -file <path>                          File to send instead of a message")
 }
 
+// readLine reads one line. A final line without a trailing newline (EOF) is
+// returned as-is; any other read error is reported.
+func readLine(r *bufio.Reader) (string, error) {
+	line, err := r.ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", err
+	}
+	return line, nil
+}
+
 func runConfig() {
 	reader := bufio.NewReader(os.Stdin)
 
 	fmt.Print("Enter Vanish Server URL [http://localhost:8080]: ")
-	url, _ := reader.ReadString('\n')
+	url, err := readLine(reader)
+	if err != nil {
+		fmt.Printf("Error reading input: %v\n", err)
+		os.Exit(1)
+	}
 	url = strings.TrimSpace(url)
 	if url == "" {
 		url = "http://localhost:8080"
 	}
 
 	fmt.Print("Enter API Token (get from local storage/login): ")
-	token, _ := reader.ReadString('\n')
+	token, err := readLine(reader)
+	if err != nil {
+		fmt.Printf("Error reading input: %v\n", err)
+		os.Exit(1)
+	}
 	token = strings.TrimSpace(token)
 
 	cfg := &config.Config{
@@ -80,7 +110,7 @@ func runConfig() {
 		Token:   token,
 	}
 
-	if err := config.SaveConfig(cfg); err != nil {
+	if err = config.SaveConfig(cfg); err != nil {
 		fmt.Printf("Error saving config: %v\n", err)
 		os.Exit(1)
 	}
@@ -119,7 +149,8 @@ func runSend(args []string, ttl int64, filePath string) {
 			secret = strings.Join(args[1:], " ")
 		} else {
 			// Read from stdin
-			info, err := os.Stdin.Stat()
+			var info os.FileInfo
+			info, err = os.Stdin.Stat()
 			if err != nil {
 				fmt.Printf("Error checking stdin: %v\n", err)
 				os.Exit(1)
@@ -127,17 +158,21 @@ func runSend(args []string, ttl int64, filePath string) {
 
 			if (info.Mode() & os.ModeCharDevice) == 0 {
 				// Data is being piped
-				bytes, err := io.ReadAll(os.Stdin)
+				var data []byte
+				data, err = io.ReadAll(os.Stdin)
 				if err != nil {
 					fmt.Printf("Error reading stdin: %v\n", err)
 					os.Exit(1)
 				}
-				secret = string(bytes)
+				secret = string(data)
 			} else {
 				// Prompt user
 				fmt.Print("Enter secret: ")
-				reader := bufio.NewReader(os.Stdin)
-				secret, _ = reader.ReadString('\n')
+				secret, err = readLine(bufio.NewReader(os.Stdin))
+				if err != nil {
+					fmt.Printf("Error reading input: %v\n", err)
+					os.Exit(1)
+				}
 			}
 		}
 		secret = strings.TrimSpace(secret)
