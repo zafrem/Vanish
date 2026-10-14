@@ -65,3 +65,6 @@ CLAUDE.md
 *.tgz
 .npm
 .eslintcache
+
+# Python bytecode from scripts/
+scripts/__pycache__/
