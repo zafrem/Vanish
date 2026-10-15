@@ -61,12 +61,7 @@ code { font-family: var(--mono); font-size: .92em; background: var(--code-bg); p
 nav { display: flex; align-items: center; gap: 4px 16px; flex-wrap: wrap; justify-content: flex-end; }
 nav a { color: var(--muted); text-decoration: none; font-size: .95rem; }
 nav a:hover { color: var(--text); }
-.bmc { display: inline-flex; border-radius: 4px; }
-.bmc img { display: block; height: 28px; width: auto; }
-@media (max-width: 560px) {
-  nav a:not(.btn):not(.bmc) { display: none; }
-  .bmc img { height: 22px; }
-}
+@media (max-width: 560px) { nav a:not(.btn) { display: none; } }
 
 /* buttons */
 .btn { display: inline-block; background: linear-gradient(90deg, var(--accent-a), var(--accent-b)); color: #fff; font-weight: 600; text-decoration: none; padding: 12px 22px; border-radius: 10px; }
