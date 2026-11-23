@@ -1,0 +1,90 @@
+name: Test CI/CD example
+
+# Manually run end-to-end check of the "CI/CD pipelines" example in DOCKERHUB.md:
+# starts the published image with Redis + PostgreSQL, then runs the example steps.
+on:
+  workflow_dispatch:
+
+jobs:
+  handoff:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: vanish
+          POSTGRES_PASSWORD: ci-test-password
+          POSTGRES_DB: vanish
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U vanish"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      VANISH_URL: http://localhost
+    steps:
+      - name: Start the Vanish image
+        run: |
+          docker run -d --name vanish --network host \
+            -e REDIS_ADDRESS=localhost:6379 \
+            -e DB_HOST=localhost -e DB_USER=vanish -e DB_PASSWORD=ci-test-password -e DB_NAME=vanish \
+            -e JWT_SECRET=ci-test-jwt-secret-not-for-production \
+            -e BASE_URL=http://localhost -e ALLOWED_ORIGINS=http://localhost \
+            zafrem/vanish:latest
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8080/health && break
+            sleep 2
+          done
+          curl -sf http://localhost:8080/health || { docker logs vanish; exit 1; }
+
+      - name: Register service account and recipient
+        run: |
+          for u in pipeline recipient; do
+            curl -sf -X POST "$VANISH_URL/api/auth/register" -H "Content-Type: application/json" \
+              -d "{\"email\":\"$u@example.com\",\"name\":\"$u\",\"password\":\"ci-pass-12345\"}" >/dev/null
+          done
+
+      # ---- the example from DOCKERHUB.md starts here ----
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - name: Build the Vanish CLI
+        run: cd cli && make build && sudo mv vanish /usr/local/bin/
+      - name: Configure the CLI
+        env:
+          VANISH_USER: pipeline@example.com
+          VANISH_PASSWORD: ci-pass-12345
+        run: |
+          TOKEN=$(curl -s -X POST "$VANISH_URL/api/auth/login" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg e "$VANISH_USER" --arg p "$VANISH_PASSWORD" '{email:$e,password:$p}')" \
+            | jq -r .token)
+          echo "::add-mask::$TOKEN"
+          mkdir -p ~/.vanish
+          jq -n --arg u "$VANISH_URL" --arg t "$TOKEN" '{base_url:$u,token:$t}' > ~/.vanish/config.json
+          chmod 600 ~/.vanish/config.json
+      - name: Send the secret
+        run: |
+          NEW_PASSWORD=$(openssl rand -base64 24)
+          echo "$NEW_PASSWORD" > "$RUNNER_TEMP/expected"
+          vanish send recipient@example.com -ttl 3600 "$NEW_PASSWORD" | tee "$RUNNER_TEMP/send.out"
+      # ---- end of example ----
+
+      - name: Recipient reads the secret, then the link is burned
+        run: |
+          LINK=$(grep -o 'http[^ ]*#[^ ]*' "$RUNNER_TEMP/send.out" | head -1)
+          [ -n "$LINK" ] || { echo "no link in output"; exit 1; }
+          TOKEN=$(curl -s -X POST "$VANISH_URL/api/auth/login" -H "Content-Type: application/json" \
+            -d '{"email":"recipient@example.com","password":"ci-pass-12345"}' | jq -r .token)
+          echo "::add-mask::$TOKEN"
+          echo "{\"base_url\":\"$VANISH_URL\",\"token\":\"$TOKEN\"}" > ~/.vanish/config.json
+          GOT=$(vanish get "$LINK")
+          [ "$GOT" = "$(cat "$RUNNER_TEMP/expected")" ] && echo "PASS: secret round-trips" || { echo "FAIL: mismatch"; exit 1; }
+          if vanish get "$LINK" >/dev/null 2>&1; then echo "FAIL: link was readable twice"; exit 1; else echo "PASS: second read fails"; fi
+
+      - name: Container logs on failure
+        if: failure()
+        run: docker logs vanish | tail -50
