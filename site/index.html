@@ -95,6 +95,7 @@
           <li><strong>Share a link.</strong> The decryption key is placed in the link's <code>#fragment</code>, the part of a URL that browsers don't include in HTTP requests.</li>
           <li><strong>Burn on read.</strong> The first read returns the message and deletes it in one atomic step. Opening the link again finds nothing.</li>
         </ol>
+        <p class="note">This flow applies to the web app, command line and Chrome extension. The Slack <code>/vanishPW</code> command encrypts on the server instead, so the server briefly sees the secret on that path.</p>
       </div>
     </section>
 

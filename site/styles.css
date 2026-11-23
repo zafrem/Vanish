@@ -95,6 +95,7 @@ blockquote p { margin: 0; }
 .diagram .edge { stroke: var(--accent-b); stroke-width: 2; }
 .diagram .arrowhead { fill: var(--accent-b); }
 
+.note { max-width: 760px; margin: 20px auto 0; color: var(--muted); font-size: .9rem; }
 .steps { padding-left: 1.2em; display: grid; gap: 12px; max-width: 760px; margin: 0 auto; }
 
 /* cards */
