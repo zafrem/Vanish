@@ -160,13 +160,13 @@ You don't have to use the web UI. Every route below talks to the same container.
 
 | Integration | Where it runs | Zero-knowledge? | Server config needed |
 |-------------|---------------|-----------------|----------------------|
-| [Shareable links](#shareable-links) | Any browser | Yes | None |
-| [CLI](#cli) | Your terminal or scripts | Yes | None |
-| [Chrome extension](#chrome-extension) | Chrome / Edge | Yes | None (edit extension for custom domains) |
-| [Slack `/vanishPW`](#slack) | Slack | **No** (server-side encryption) | `SLACK_*` |
-| [Email notifications](#email-notifications) | Recipient's inbox | Link only | `EMAIL_*` |
-| [REST API](#rest-api) | Anything that speaks HTTP | Depends on your client | None |
-| [CI/CD pipelines](#cicd-pipelines) | GitHub Actions, GitLab CI, etc. | Yes (via the CLI) | None |
+| Shareable links | Any browser | Yes | None |
+| CLI | Your terminal or scripts | Yes | None |
+| Chrome extension | Chrome / Edge | Yes | None (edit extension for custom domains) |
+| Slack `/vanishPW` | Slack | **No** (server-side encryption) | `SLACK_*` |
+| Email notifications | Recipient's inbox | Link only | `EMAIL_*` |
+| REST API | Anything that speaks HTTP | Depends on your client | None |
+| CI/CD pipelines | GitHub Actions, GitLab CI, etc. | Yes (via the CLI) | None |
 
 The CLI and Chrome extension are not in this image. They are separate clients that point at your running container.
 
