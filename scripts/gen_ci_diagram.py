@@ -3,25 +3,7 @@
 
 Writes, from one source of truth:
   images/ci-handoff.svg   themed (light/dark) SVG for the README
-  images/ci-handoff.png   light PNG for Docker Hub (needs Defaulting to user installation because normal site-packages is not writeable
-Collecting cairosvg
-  Downloading cairosvg-2.9.1-py3-none-any.whl.metadata (2.7 kB)
-Collecting cairocffi (from cairosvg)
-  Downloading cairocffi-1.7.1-py3-none-any.whl.metadata (3.3 kB)
-Collecting cssselect2 (from cairosvg)
-  Downloading cssselect2-0.10.1-py3-none-any.whl.metadata (2.9 kB)
-Requirement already satisfied: defusedxml in /home/baruna/.local/lib/python3.10/site-packages (from cairosvg) (0.7.1)
-Requirement already satisfied: pillow in /home/baruna/.local/lib/python3.10/site-packages (from cairosvg) (12.2.0)
-Requirement already satisfied: tinycss2 in /home/baruna/.local/lib/python3.10/site-packages (from cairosvg) (1.2.1)
-Requirement already satisfied: cffi>=1.1.0 in /home/baruna/.local/lib/python3.10/site-packages (from cairocffi->cairosvg) (1.16.0)
-Requirement already satisfied: pycparser in /home/baruna/.local/lib/python3.10/site-packages (from cffi>=1.1.0->cairocffi->cairosvg) (2.22)
-Requirement already satisfied: webencodings in /home/baruna/.local/lib/python3.10/site-packages (from cssselect2->cairosvg) (0.5.1)
-Downloading cairosvg-2.9.1-py3-none-any.whl (46 kB)
-Downloading cairocffi-1.7.1-py3-none-any.whl (75 kB)
-Downloading cssselect2-0.10.1-py3-none-any.whl (15 kB)
-Installing collected packages: cssselect2, cairocffi, cairosvg
-
-Successfully installed cairocffi-1.7.1 cairosvg-2.9.1 cssselect2-0.10.1)
+  images/ci-handoff.png   light PNG for Docker Hub (needs cairosvg: pip install cairosvg)
   site/index.html         refreshes the inline <svg> that has id "ci-title"
 
 Run from anywhere:  python3 scripts/gen_ci_diagram.py [--no-png]
