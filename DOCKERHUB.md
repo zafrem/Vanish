@@ -162,7 +162,7 @@ You don't have to use the web UI. Every route below talks to the same container.
 |-------------|---------------|-----------------|----------------------|
 | [Shareable links](#shareable-links) | Any browser | Yes | None |
 | [CLI](#cli) | Your terminal or scripts | Yes | None |
-| [Chrome extension](#chrome-extension) | Chrome / Edge | Yes | None |
+| [Chrome extension](#chrome-extension) | Chrome / Edge | Yes | None (edit extension for custom domains) |
 | [Slack `/vanishPW`](#slack) | Slack | **No** (server-side encryption) | `SLACK_*` |
 | [Email notifications](#email-notifications) | Recipient's inbox | Link only | `EMAIL_*` |
 | [REST API](#rest-api) | Anything that speaks HTTP | Depends on your client | None |
@@ -200,9 +200,23 @@ Good fits: CI/CD jobs, onboarding scripts, and piping credentials without ever w
 
 Source: `chrome-extension/`. It scans pages for keywords or regexes you define (passwords, API keys), highlights matches, and creates a Vanish link in one click. Encryption happens in the browser.
 
-1. Open `chrome://extensions`, enable **Developer mode**, and choose **Load unpacked**. Select the `chrome-extension/` folder.
-2. Log in to your Vanish web app once, so the extension can use your session.
-3. Point the extension's options at your Vanish URL.
+1. Open `chrome://extensions`, enable **Developer mode**, and choose **Load unpacked**. Select the `chrome-extension/` folder. The README there explains how to create the three icon files it needs first.
+2. Log in to Vanish in a browser tab and keep that tab open. The extension reads your session token from it.
+3. Click the extension icon to see detected secrets and create links. The options page only manages keywords and scan settings. It has **no server URL field**.
+
+**Which server it talks to is hardcoded.** Only these addresses work out of the box:
+
+| Vanish tab open at | Extension uses API | Links point to |
+|--------------------|--------------------|----------------|
+| `http://localhost:3000` | `http://localhost:8080/api` | `http://localhost:3000` |
+| `https://vanish.app` | `https://api.vanish.app/api` | `https://vanish.app` |
+
+For a local container, publish both ports (`-p 3000:80 -p 8080:8080`).
+
+For your own domain, edit the extension before loading it, then reload it in `chrome://extensions`:
+
+1. `manifest.json`: add your origin, such as `"https://vanish.example.com/*"`, to `host_permissions`.
+2. `background/service-worker.js`: in `extractTokenFromVanishTab`, `getApiBase` and `getVanishBase`, add your URL to the `chrome.tabs.query` list and return your own values. For the single-container image the API is on the same host, so use `https://vanish.example.com/api` for the API and `https://vanish.example.com` for links.
 
 ### Slack
 
