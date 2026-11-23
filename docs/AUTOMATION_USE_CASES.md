@@ -23,29 +23,30 @@ Use Vanish as a "dead drop." The secret exists only long enough for the server t
 1.  **Orchestrator (Terraform/CI)** generates the secret.
 2.  **Orchestrator** saves it to Vanish and gets a one-time URL.
 3.  **Orchestrator** launches the instance, passing *only the URL* in the startup script.
-4.  **Instance** boots, runs `curl` to fetch the secret, and configures itself.
+4.  **Instance** boots, runs `vanish get <url>` to fetch and decrypt the secret, and configures itself.
 5.  **Result:** The URL is now dead. Inspection of the cloud console reveals only an expired link.
+
+**Requirements:** secrets are encrypted in the client, so `curl` alone cannot read them. The instance needs the Vanish CLI and a login token for the registered recipient account (here `bootstrapper@internal`). Install the CLI in the image, and deliver the token another way, for example from the instance's own IAM or secret-store identity. Do not put it in user data.
 
 **Example (Terraform + Cloud-Init):**
 
 ```bash
-# 1. Create the secret using Vanish CLI
-SECRET_URL=$(echo "my-super-secret-db-password" | vanish send --ttl 300 bootstrapper@internal)
+# 1. Create the secret using the Vanish CLI. The link is the line that contains "#".
+SECRET_URL=$(echo "my-super-secret-db-password" \
+  | vanish send bootstrapper@internal -ttl 300 \
+  | grep -o 'http[^ ]*#[^ ]*' | head -1)
 
-# 2. Pass the URL to the instance
+# 2. Pass only the URL to the instance
 aws ec2 run-instances \
   --image-id ami-12345678 \
   --user-data "#!/bin/bash
-    # Fetch the secret
-    # Note: Requires a script/tool to decrypt the client-side hash if using full E2E
-    # For server-side automation, use the API directly or the CLI tool
-    
-    DB_PASS=\$(curl -s -X GET $SECRET_URL/raw | jq -r .secret)
-    
-    # Configure Database
-    sed -i \"s/PASSWORD_HERE/\$DB_PASS/" /etc/db_config.conf
-    
-    # URL is now burned. No trace left."
+    # ~/.vanish/config.json for the bootstrapper account is provisioned separately
+    DB_PASS=\$(vanish get '$SECRET_URL')
+
+    # Configure the database
+    sed -i \"s/PASSWORD_HERE/\$DB_PASS/\" /etc/db_config.conf
+
+    # The URL is now burned. No trace left."
 ```
 
 ---
@@ -62,14 +63,14 @@ Use Vanish to pass a reference to the secret, rather than the secret itself.
 
 **Workflow:**
 1.  **Step A (Producer):** Generates a credential.
-2.  **Step A:** Sends it to Vanish: `vanish send "secret" > /tmp/url`.
+2.  **Step A:** Sends it to a registered recipient (for example a pipeline service account): `vanish send pipeline@example.com "secret" | grep -o 'http[^ ]*#[^ ]*' > url.txt`.
 3.  **Output:** Step A prints `https://vanish.../m/abc` to the build logs. This is safe!
 4.  **Step B (Consumer):** Reads the URL from the previous step's output or a shared file.
-5.  **Step B:** Fetches the secret, uses it, and the message vanishes.
+5.  **Step B:** Runs `vanish get "$(cat url.txt)"` as that recipient, uses the secret, and the message vanishes. Step B needs the CLI configured with the recipient's token.
 
 **Benefits:**
 *   **Clean Logs:** Your CI/CD history contains only expired URLs, not actual API keys.
-*   **Audit Trail:** Vanish logs *that* a secret was read, providing a timestamp for the handover.
+*   **Audit Trail:** Vanish records *that* a secret was read and when (message status and read time in the history), never its contents.
 
 ---
 
