@@ -18,7 +18,7 @@ Vanish operates on a zero-knowledge architecture, which means the server never s
 
 ## Why Use Vanish?
 
-*   **Zero-Knowledge by Design**: We can't see your secrets, and neither can anyone else. For messages created in the web app, CLI or Chrome extension, the server never handles plaintext data or the decryption key (it lives only in the link's `#fragment`). **Caveat:** the Slack `/vanish` command encrypts on the server, so the server sees the secret in that path and it is not zero-knowledge.
+*   **Zero-Knowledge by Design**: We can't see your secrets, and neither can anyone else. For messages created in the web app, CLI or Chrome extension, the server never handles plaintext data or the decryption key (it lives only in the link's `#fragment`). **Caveat:** the Slack `/vanishPW` command encrypts on the server, so the server sees the secret in that path and it is not zero-knowledge.
 *   **Client-Side Encryption**: Your data is locked with AES-256-GCM encryption before it leaves your browser.
 *   **Burn-on-Read**: Once a message is viewed, it's gone. Automatically and permanently destroyed.
 *   **Clipboard Protection**: To prevent accidental leaks, secrets are copied directly to your clipboard instead of being displayed in the DOM.
@@ -138,6 +138,22 @@ Vanish is built on a modern, robust stack designed for performance and security:
 *   **Backend**: Go 1.21, Gin Web Framework, Redis 7, PostgreSQL 15
 *   **Frontend**: React 18, Vite, Tailwind CSS, Web Crypto API
 
+## Usage Cases
+
+Vanish works wherever a secret would otherwise sit in a chat, a ticket or a build log. You can use it from the web app, but you don't have to.
+
+| Use case | How | Zero-knowledge? |
+|----------|-----|-----------------|
+| **Share a credential with a teammate** | Create a link in the web app or the Chrome extension and send it anywhere. It works once. | Yes |
+| **Send a secret from Slack** | `/vanishPW` opens a private modal, and the recipient gets a DM with a one-time link. See [`docs/SLACK_INTEGRATION.md`](docs/SLACK_INTEGRATION.md). | No (encrypted on the server) |
+| **Hand a credential over from a CI/CD job** | A job runs `vanish send <email> "$SECRET"` instead of printing the secret in the build log. The CLI example is in the [Docker Hub overview](DOCKERHUB.md#cicd-pipelines) and has been tested end to end. | Yes |
+| **Pass a secret between pipeline steps** | One step creates the link and the next reads it with `vanish get`. The logs contain only an expired link. See [`docs/AUTOMATION_USE_CASES.md`](docs/AUTOMATION_USE_CASES.md). | Yes |
+| **Send a file** | `vanish send <email> -file ./credentials.pdf` (up to 5 MiB), encrypted before upload. | Yes |
+| **Bootstrap a new server** | Put a one-time link in cloud-init instead of the secret itself. | Yes |
+| **Catch accidental exposure** | The Chrome extension highlights passwords and API keys on a page and offers to turn them into links. | Yes |
+
+Two limits apply everywhere: recipients must be registered Vanish users, and a link can be read only once, so it can't be used for secrets that every run needs. Keep those in a secret manager such as Vault.
+
 ## Documentation
 
 We have detailed documentation available to help you get the most out of Vanish:
@@ -147,6 +163,7 @@ We have detailed documentation available to help you get the most out of Vanish:
 *   **[Deployment Guide](docs/DEPLOYMENT.md)**: Instructions for deploying Vanish to production.
 *   **[Enterprise Setup](docs/ENTERPRISE_SETUP.md)**: Integrations for Okta, Vault, Slack, and Email.
 *   **[Configuration](docs/CONFIGURATION.md)**: Learn about environment variables and settings.
+*   **[Automation Use Cases](docs/AUTOMATION_USE_CASES.md)**: CI/CD, cloud-init and honeytoken patterns.
 *   **[Testing](docs/TESTING.md)**: How to run the test suite.
 
 ## Security Notice

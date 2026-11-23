@@ -137,6 +137,20 @@
       </div>
     </section>
 
+    <section id="use-cases">
+      <div class="wrap">
+        <h2>Use cases</h2>
+        <ul class="cards">
+          <li><h3>Share a credential</h3><p>Send a teammate a password or API key as a one-time link instead of pasting it into chat.</p></li>
+          <li><h3>Hand off from CI/CD</h3><p>A pipeline job sends a generated secret with <code>vanish send</code>, so it never appears in the build log.</p></li>
+          <li><h3>Send from Slack</h3><p><code>/vanishPW</code> opens a private modal and DMs the recipient a link. On this path the server encrypts the secret.</p></li>
+          <li><h3>Transfer a file</h3><p>Send certificates or key files up to 5 MiB, encrypted before they leave your machine.</p></li>
+          <li><h3>Bootstrap a server</h3><p>Put a one-time link in cloud-init, not the secret itself.</p></li>
+          <li><h3>Catch exposed secrets</h3><p>The Chrome extension highlights passwords and keys on a page and turns them into links.</p></li>
+        </ul>
+      </div>
+    </section>
+
     <section id="start">
       <div class="wrap narrow">
         <h2>Quick start</h2>
