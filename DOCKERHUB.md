@@ -166,6 +166,7 @@ You don't have to use the web UI. Every route below talks to the same container.
 | [Slack `/vanishPW`](#slack) | Slack | **No** (server-side encryption) | `SLACK_*` |
 | [Email notifications](#email-notifications) | Recipient's inbox | Link only | `EMAIL_*` |
 | [REST API](#rest-api) | Anything that speaks HTTP | Depends on your client | None |
+| [CI/CD pipelines](#cicd-pipelines) | GitHub Actions, GitLab CI, etc. | Yes (via the CLI) | None |
 
 The CLI and Chrome extension are not in this image. They are separate clients that point at your running container.
 
@@ -273,6 +274,56 @@ Authenticated with a Bearer JWT from `POST /api/auth/login`.
 | `GET` | `/health` | Liveness check |
 
 The API only accepts **ciphertext**. To keep the zero-knowledge guarantee, your client must encrypt with AES-256-GCM (256-bit key, 96-bit IV, base64) and keep the key in the link's `#fragment`. See the [API reference](https://github.com/zafrem/Vanish/blob/main/docs/API_REFERENCE.md) for request bodies.
+
+### CI/CD pipelines
+
+Vanish suits **secret handoffs** from a pipeline. It is **not** a pipeline event notifier. For "build failed" or "deploy succeeded" alerts, use Slack's own tools (an incoming webhook or the Slack GitHub Action).
+
+Typical uses:
+- A job generates a temporary credential (DB password, API key) and sends it to a person with `vanish send`, so it never appears in the build log or a Slack channel.
+- A person creates a link and a job reads it with `vanish get`. The message is destroyed on that read, so this only fits one-off handoffs. Keep secrets that every run needs in your CI secret store or Vault.
+
+Example GitHub Actions job that sends a generated secret to a registered user:
+
+```yaml
+jobs:
+  handoff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: zafrem/Vanish
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - name: Build the Vanish CLI
+        run: cd cli && make build && sudo mv vanish /usr/local/bin/
+      - name: Configure the CLI
+        env:
+          VANISH_URL: ${{ secrets.VANISH_URL }}
+          VANISH_USER: ${{ secrets.VANISH_USER }}
+          VANISH_PASSWORD: ${{ secrets.VANISH_PASSWORD }}
+        run: |
+          TOKEN=$(curl -s -X POST "$VANISH_URL/api/auth/login" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg e "$VANISH_USER" --arg p "$VANISH_PASSWORD" '{email:$e,password:$p}')" \
+            | jq -r .token)
+          echo "::add-mask::$TOKEN"
+          mkdir -p ~/.vanish
+          jq -n --arg u "$VANISH_URL" --arg t "$TOKEN" '{base_url:$u,token:$t}' > ~/.vanish/config.json
+          chmod 600 ~/.vanish/config.json
+      - name: Send the secret
+        run: |
+          NEW_PASSWORD=$(openssl rand -base64 24)
+          # ... apply NEW_PASSWORD to the system you are provisioning ...
+          vanish send dev@example.com -ttl 3600 "$NEW_PASSWORD"
+```
+
+Things to know:
+- **Use a dedicated service account** in Vanish for the pipeline, with its email and password in the CI secret store. The JWT lasts `JWT_DURATION` hours (24 by default), so log in at the start of each run as above.
+- **Recipients must be registered users.** When `SLACK_ENABLED` is on, `vanish send` also tries to DM the link to the recipient. That step is best-effort, so if it fails the command still prints the link.
+- **Re-runs can't re-read a link.** A second `vanish get` on the same link finds nothing.
+- The CLI isn't in the image, so the job builds it from source as shown. Pin the repository `ref` to a tag or commit for reproducible builds.
 
 ### Single sign-on
 
