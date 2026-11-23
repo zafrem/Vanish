@@ -152,6 +152,8 @@ Vanish works wherever a secret would otherwise sit in a chat, a ticket or a buil
 | **Bootstrap a new server** | Put a one-time link in cloud-init instead of the secret itself. | Yes |
 | **Catch accidental exposure** | The Chrome extension highlights passwords and API keys on a page and offers to turn them into links. | Yes |
 
+![A CI/CD job sends ciphertext to Vanish and shares only the one-time link with a teammate](images/ci-handoff.svg)
+
 Two limits apply everywhere: recipients must be registered Vanish users, and a link can be read only once, so it can't be used for secrets that every run needs. Keep those in a secret manager such as Vault.
 
 ## Documentation

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 230" width="760" height="230" role="img" aria-labelledby="t d">
+  <title id="t">How a CI/CD job hands a secret to a teammate</title>
+  <desc id="d">A CI/CD job encrypts a credential and uploads only the ciphertext to the Vanish server. The job shares just the one-time link with a teammate through the build log or chat. The teammate opens the link once, and the server deletes the message on that first read.</desc>
+  <style>
+    .node rect { fill: #ffffff; stroke: #d5deec; stroke-width: 1.5; }
+    .t-head { fill: #0f1b33; font: 600 16px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+    .t-sub { fill: #4c5b78; font: 13px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+    .t-edge { fill: #ea580c; font: 700 14px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+    .edge { stroke: #ea580c; stroke-width: 2; }
+    .arrowhead { fill: #ea580c; }
+    .bg { fill: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      .node rect { fill: #16213a; stroke: #26344f; }
+      .t-head { fill: #e6ebf5; }
+      .t-sub { fill: #9aa8c2; }
+      .t-edge { fill: #f97316; }
+      .edge { stroke: #f97316; }
+      .arrowhead { fill: #f97316; }
+      .bg { fill: #0b1220; }
+    }
+  </style>
+  <rect class="bg" width="760" height="230"/>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" class="arrowhead"/>
+    </marker>
+  </defs>
+  <g class="node">
+    <rect x="10" y="40" width="170" height="100" rx="12"/>
+    <text x="95" y="76" text-anchor="middle" class="t-head">CI/CD job</text>
+    <text x="95" y="100" text-anchor="middle" class="t-sub">creates a credential,</text>
+    <text x="95" y="118" text-anchor="middle" class="t-sub">runs vanish send</text>
+  </g>
+  <g class="node">
+    <rect x="295" y="40" width="170" height="100" rx="12"/>
+    <text x="380" y="76" text-anchor="middle" class="t-head">Vanish server</text>
+    <text x="380" y="100" text-anchor="middle" class="t-sub">holds ciphertext</text>
+    <text x="380" y="118" text-anchor="middle" class="t-sub">and an expiry</text>
+  </g>
+  <g class="node">
+    <rect x="580" y="40" width="170" height="100" rx="12"/>
+    <text x="665" y="76" text-anchor="middle" class="t-head">Teammate</text>
+    <text x="665" y="100" text-anchor="middle" class="t-sub">opens the link once,</text>
+    <text x="665" y="118" text-anchor="middle" class="t-sub">then it is gone</text>
+  </g>
+  <line x1="180" y1="90" x2="293" y2="90" class="edge" marker-end="url(#arrow)"/>
+  <line x1="465" y1="90" x2="578" y2="90" class="edge" marker-end="url(#arrow)"/>
+  <text x="237" y="78" text-anchor="middle" class="t-edge">1 ciphertext</text>
+  <text x="522" y="78" text-anchor="middle" class="t-edge">3 read once</text>
+  <path d="M95 140 V190 H665 V144" fill="none" class="edge" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+  <text x="380" y="180" text-anchor="middle" class="t-edge">2 link only</text>
+  <text x="380" y="214" text-anchor="middle" class="t-sub">The build log or chat carries the link. The key stays in the #fragment.</text>
+</svg>

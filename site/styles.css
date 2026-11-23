@@ -87,6 +87,7 @@ blockquote { margin: 0 0 16px; padding: 4px 0 4px 18px; border-left: 4px solid v
 blockquote p { margin: 0; }
 
 /* diagram */
+.cards + .diagram { margin-top: 32px; }
 .diagram { display: block; margin: 0 auto 28px; max-width: 760px; }
 .diagram .node rect { fill: var(--card); stroke: var(--border); stroke-width: 1.5; }
 .diagram .t-head { fill: var(--text); font: 600 16px var(--font); }

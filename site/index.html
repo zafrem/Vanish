@@ -148,6 +148,40 @@
           <li><h3>Bootstrap a server</h3><p>Put a one-time link in cloud-init, not the secret itself.</p></li>
           <li><h3>Catch exposed secrets</h3><p>The Chrome extension highlights passwords and keys on a page and turns them into links.</p></li>
         </ul>
+        <svg class="diagram" viewBox="0 0 760 230" role="img" aria-labelledby="ci-title ci-desc">
+          <title id="ci-title">How a CI/CD job hands a secret to a teammate</title>
+          <desc id="ci-desc">A CI/CD job encrypts a credential and uploads only the ciphertext to the Vanish server. The job shares just the one-time link with a teammate through the build log or chat. The teammate opens the link once, and the server deletes the message on that first read.</desc>
+          <defs>
+    <marker id="arrow-ci" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" class="arrowhead"/>
+    </marker>
+  </defs>
+  <g class="node">
+    <rect x="10" y="40" width="170" height="100" rx="12"/>
+    <text x="95" y="76" text-anchor="middle" class="t-head">CI/CD job</text>
+    <text x="95" y="100" text-anchor="middle" class="t-sub">creates a credential,</text>
+    <text x="95" y="118" text-anchor="middle" class="t-sub">runs vanish send</text>
+  </g>
+  <g class="node">
+    <rect x="295" y="40" width="170" height="100" rx="12"/>
+    <text x="380" y="76" text-anchor="middle" class="t-head">Vanish server</text>
+    <text x="380" y="100" text-anchor="middle" class="t-sub">holds ciphertext</text>
+    <text x="380" y="118" text-anchor="middle" class="t-sub">and an expiry</text>
+  </g>
+  <g class="node">
+    <rect x="580" y="40" width="170" height="100" rx="12"/>
+    <text x="665" y="76" text-anchor="middle" class="t-head">Teammate</text>
+    <text x="665" y="100" text-anchor="middle" class="t-sub">opens the link once,</text>
+    <text x="665" y="118" text-anchor="middle" class="t-sub">then it is gone</text>
+  </g>
+  <line x1="180" y1="90" x2="293" y2="90" class="edge" marker-end="url(#arrow-ci)"/>
+  <line x1="465" y1="90" x2="578" y2="90" class="edge" marker-end="url(#arrow-ci)"/>
+  <text x="237" y="78" text-anchor="middle" class="t-edge">1 ciphertext</text>
+  <text x="522" y="78" text-anchor="middle" class="t-edge">3 read once</text>
+  <path d="M95 140 V190 H665 V144" fill="none" class="edge" stroke-dasharray="6 5" marker-end="url(#arrow-ci)"/>
+  <text x="380" y="180" text-anchor="middle" class="t-edge">2 link only</text>
+  <text x="380" y="214" text-anchor="middle" class="t-sub">The build log or chat carries the link. The key stays in the #fragment.</text>
+        </svg>
       </div>
     </section>
 

@@ -283,6 +283,8 @@ Typical uses:
 - A job generates a temporary credential (DB password, API key) and sends it to a person with `vanish send`, so it never appears in the build log or a Slack channel.
 - A person creates a link and a job reads it with `vanish get`. The message is destroyed on that read, so this only fits one-off handoffs. Keep secrets that every run needs in your CI secret store or Vault.
 
+![A CI/CD job sends ciphertext to Vanish and shares only the one-time link with a teammate](https://raw.githubusercontent.com/zafrem/Vanish/main/images/ci-handoff.png)
+
 Example GitHub Actions job that sends a generated secret to a registered user:
 
 ```yaml
